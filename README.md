@@ -14,6 +14,27 @@ npm run dev
 Open http://localhost:3000 (use `https` or a tunnel like ngrok for camera/
 motion permissions on a real phone -- browsers require a secure context).
 
+## GPS calibration and live camera navigation
+
+1. Open **Calibrate / scan QR** and scan a labeled QR point. The app stores
+   that node's graph coordinate together with a high-accuracy GPS fix.
+2. Move to a different QR point on the same floor and scan it. The two
+   graph/GPS pairs establish scale, rotation, and translation between GPS
+   and the navigation graph.
+3. Open **Navigate**, start the rear camera, and enable the compass. GPS
+   continuously updates the A* start node and the arrow points toward a
+   stable look-ahead waypoint on the route.
+
+The two QR labels must match two different entries in `zones` in
+`public/nav_graph.json`. Put the calibration stickers as far apart as
+practical on the same floor. Calibration is stored in the browser until
+the user chooses **Reset calibration**.
+
+Camera, GPS, motion, and orientation APIs require HTTPS on a physical
+phone (localhost is accepted for desktop development). Indoor GPS can be
+inaccurate, so scanning any known QR or sign also corrects the current
+graph position exactly.
+
 ## How location is determined (no training required)
 
 1. **Read signage** -- OCR (tesseract.js) reads existing room number/floor

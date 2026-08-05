@@ -5,11 +5,26 @@
  */
 
 export type NavGraph = {
-  meta?: { resolution: number; origin_x: number; origin_z: number };
+  meta?: {
+    resolution?: number;
+    origin_x?: number;
+    origin_z?: number;
+    buildingId?: string;
+    version?: number;
+    units?: string;
+  };
   nodes: Record<string, [number, number, number]>; // [x, z, floor]
   edges: Record<string, [number, number][]>;
   exits: number[];
-  zones: Record<string, { label: string; type: string }>;
+  zones: Record<
+    string,
+    {
+      label: string;
+      type: string;
+      gps?: { lat: number | null; lon: number | null };
+    }
+  >;
+  calibrationAnchors?: Record<string, { nodeId: number; floor: number }>;
 };
 
 export type AstarResult = {
@@ -103,6 +118,24 @@ export function nearestNode(graph: NavGraph, x: number, z: number): number {
   for (const [idStr, [nx, nz]] of Object.entries(graph.nodes)) {
     const d = Math.hypot(x - nx, z - nz);
     if (d < best.dist) best = { id: parseInt(idStr, 10), dist: d };
+  }
+  return best.id;
+}
+
+/** Nearest graph node on the active floor. GPS cannot determine a floor reliably. */
+export function nearestNodeOnFloor(
+  graph: NavGraph,
+  x: number,
+  z: number,
+  floor: number
+): number {
+  let best = { id: -1, dist: Infinity };
+  for (const [idStr, [nx, nz, nodeFloor]] of Object.entries(graph.nodes)) {
+    if (nodeFloor !== floor) continue;
+    const distance = Math.hypot(x - nx, z - nz);
+    if (distance < best.dist) {
+      best = { id: parseInt(idStr, 10), dist: distance };
+    }
   }
   return best.id;
 }

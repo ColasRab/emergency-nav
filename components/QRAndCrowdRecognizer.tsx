@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import jsQR from "jsqr";
 import * as cocoSsd from "@tensorflow-models/coco-ssd";
 import "@tensorflow/tfjs";
 import type { NavGraph } from "@/lib/astar";
+import { getCurrentGpsFix, type GpsFix } from "@/lib/calibration";
 
 /**
  * QRAndCrowdRecognizer -- zero-training replacement for a custom scene
@@ -48,14 +49,21 @@ export default function QRAndCrowdRecognizer({
   onLocationUpdate,
 }: {
   graph: NavGraph;
-  onLocationUpdate: (nodeId: number, label: string, crowdPenalty: number, personCount: number) => void;
+  onLocationUpdate: (
+    nodeId: number,
+    label: string,
+    crowdPenalty: number,
+    personCount: number,
+    gpsFix: GpsFix | null
+  ) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const [crowdModel, setCrowdModel] = useState<cocoSsd.ObjectDetection | null>(null);
   const [status, setStatus] = useState("Loading crowd model…");
   const [scanning, setScanning] = useState(false);
-  const zoneIndex = buildZoneIndex(graph);
+  const zoneIndex = useMemo(() => buildZoneIndex(graph), [graph]);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,21 +75,32 @@ export default function QRAndCrowdRecognizer({
     });
     return () => {
       cancelled = true;
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
   async function startCamera() {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
-    });
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
+    try {
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+      cameraStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setStatus(crowdModel ? "Ready" : "Camera ready; crowd model is still loading");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Unable to start the camera.");
     }
   }
 
   async function scanNow() {
-    if (!videoRef.current || !canvasRef.current || !crowdModel) return;
+    if (!videoRef.current || !canvasRef.current || videoRef.current.readyState < 2) {
+      setStatus("Start the camera before scanning.");
+      return;
+    }
     setScanning(true);
     setStatus("Scanning…");
 
@@ -97,7 +116,7 @@ export default function QRAndCrowdRecognizer({
     const qr = jsQR(imageData.data, imageData.width, imageData.height);
 
     // 2. Crowd count -- pretrained, no training
-    const detections = await crowdModel.detect(video);
+    const detections = crowdModel ? await crowdModel.detect(video) : [];
     const personCount = detections.filter((d) => d.class === "person").length;
     const crowdPenalty = crowdPenaltyFromCount(personCount);
 
@@ -115,10 +134,23 @@ export default function QRAndCrowdRecognizer({
       return;
     }
 
+    setStatus(`QR found: ${qr.data}. Capturing GPS position…`);
+    let gpsFix: GpsFix | null = null;
+    let gpsWarning = "";
+    try {
+      gpsFix = await getCurrentGpsFix();
+      if (gpsFix.accuracy > 30) {
+        gpsWarning = ` · GPS accuracy is only ±${Math.round(gpsFix.accuracy)} m`;
+      }
+    } catch (error) {
+      gpsWarning = ` · ${error instanceof Error ? error.message : "GPS unavailable"}`;
+    }
     setStatus(
-      `Zone: ${qr.data} · People: ${personCount}` + (crowdPenalty > 1 ? " · congestion detected" : "")
+      `Zone: ${qr.data} · People: ${personCount}` +
+        (crowdPenalty > 1 ? " · congestion detected" : "") +
+        gpsWarning
     );
-    onLocationUpdate(nodeId, qr.data, crowdPenalty, personCount);
+    onLocationUpdate(nodeId, qr.data, crowdPenalty, personCount, gpsFix);
     setScanning(false);
   }
 
@@ -128,7 +160,7 @@ export default function QRAndCrowdRecognizer({
       <canvas ref={canvasRef} style={{ display: "none" }} />
       <div className="button-row">
         <button onClick={startCamera}>Start camera</button>
-        <button onClick={scanNow} disabled={!crowdModel || scanning}>
+        <button onClick={scanNow} disabled={scanning}>
           {scanning ? "Scanning…" : "Scan QR code"}
         </button>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Tesseract from "tesseract.js";
 import type { NavGraph } from "@/lib/astar";
 
@@ -37,17 +37,28 @@ export default function ZoneRecognizer({
   onZoneFound: (nodeId: number, label: string) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const [status, setStatus] = useState<"idle" | "scanning" | "not_found">("idle");
   const [lastText, setLastText] = useState("");
-  const zoneIndex = buildZoneIndex(graph);
+  const zoneIndex = useMemo(() => buildZoneIndex(graph), [graph]);
+
+  useEffect(() => {
+    return () => cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   async function startCamera() {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
-    });
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
+    try {
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+      cameraStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+    } catch {
+      setStatus("not_found");
     }
   }
 

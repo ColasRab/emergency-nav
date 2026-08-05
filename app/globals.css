@@ -64,6 +64,11 @@ h1 {
   background: #17233a;
 }
 
+.mode-toggle button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .recognizer-panel {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -77,6 +82,54 @@ h1 {
   border-radius: 8px;
   background: #000;
   display: block;
+}
+
+.camera-navigation {
+  position: relative;
+  min-height: 280px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+}
+
+.navigation-video {
+  min-height: 280px;
+  object-fit: cover;
+}
+
+.navigation-arrow {
+  position: absolute;
+  top: 47%;
+  left: 50%;
+  width: 72px;
+  height: 100px;
+  transform-origin: center;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.75));
+  transition: transform 160ms ease-out;
+  pointer-events: none;
+}
+
+.navigation-arrow svg {
+  width: 100%;
+  height: 100%;
+  fill: var(--exit-green);
+  stroke: #fff;
+  stroke-width: 5;
+}
+
+.navigation-instruction {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  left: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(13, 17, 23, 0.82);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
+  backdrop-filter: blur(5px);
 }
 
 .button-row {
@@ -134,6 +187,20 @@ h1 {
   font-size: 1.1rem;
   font-weight: 700;
   margin-top: 2px;
+}
+
+.calibration-card .status-line + .status-line {
+  margin-top: 4px;
+}
+
+.secondary-button {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
 }
 
 .congestion-tag {
