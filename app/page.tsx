@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ZoneRecognizer from "@/components/ZoneRecognizer";
 import QRAndCrowdRecognizer from "@/components/QRAndCrowdRecognizer";
 import PassiveStairProgress from "@/components/PassiveStairProgress";
@@ -17,6 +17,7 @@ import {
 type Mode = "ocr" | "qr" | "navigate";
 
 const CALIBRATION_STORAGE_KEY = "emergency-nav:gps-calibration:v1";
+const POSITION_LOCK_MS = 6_000;
 
 function buildLiveMultipliers(
   graph: NavGraph,
@@ -72,6 +73,7 @@ export default function Page() {
   const [calibration, setCalibration] = useState<CalibrationTransform | null>(null);
   const [congestion, setCongestion] = useState<{ penalty: number; count: number } | null>(null);
   const [liveMultipliers, setLiveMultipliers] = useState<Record<string, number>>({});
+  const positionLockUntilRef = useRef(0);
 
   useEffect(() => {
     fetch("/nav_graph.json")
@@ -107,6 +109,7 @@ export default function Page() {
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
+        if (Date.now() < positionLockUntilRef.current) return;
         const projected = gpsToGraph(
           {
             latitude: position.coords.latitude,
@@ -149,6 +152,7 @@ export default function Page() {
   function setExactGraphLocation(nodeId: number, label: string) {
     if (!graph) return;
     const [x, z, floor] = graph.nodes[String(nodeId)];
+    positionLockUntilRef.current = Date.now() + POSITION_LOCK_MS;
     setCurrentNodeId(nodeId);
     setCurrentLabel(label);
     setCurrentFloor(floor);
@@ -211,6 +215,7 @@ export default function Page() {
       setCalibration(transform);
       localStorage.setItem(CALIBRATION_STORAGE_KEY, JSON.stringify(transform));
       setFirstCalibrationSample(null);
+      setExactGraphLocation(nodeId, displayLabel);
       setGpsStatus("GPS calibration complete. Live navigation is ready.");
       setMode("navigate");
     } catch (error) {
