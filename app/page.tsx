@@ -19,6 +19,7 @@ type Mode = "ocr" | "qr" | "navigate";
 
 const CALIBRATION_STORAGE_KEY = "emergency-nav:gps-calibration:v1";
 const POSITION_LOCK_MS = 6_000;
+const STAIR_POSITION_LOCK_MS = 12_000;
 
 function buildLiveMultipliers(
   graph: NavGraph,
@@ -147,13 +148,20 @@ export default function Page() {
   const expectingStairSegment = useMemo(() => {
     if (!graph || !result?.path || result.path.length < 2) return false;
     const [current, next] = result.path;
-    return graph.nodes[current][2] !== graph.nodes[next][2];
-  }, [graph, result]);
+    if (graph.nodes[current][2] !== graph.nodes[next][2]) return true;
+    const currentZoneType = graph.zones[String(current)]?.type?.toLowerCase() ?? "";
+    const isStairZone = currentZoneType === "stairs" || currentZoneType.includes("stair");
+    if (!isStairZone) return false;
+    for (const nodeId of result.path.slice(1, 6)) {
+      if (graph.nodes[nodeId][2] !== currentFloor) return true;
+    }
+    return false;
+  }, [currentFloor, graph, result]);
 
-  function setExactGraphLocation(nodeId: number, label: string) {
+  function setExactGraphLocation(nodeId: number, label: string, lockMs = POSITION_LOCK_MS) {
     if (!graph) return;
     const [x, z, floor] = graph.nodes[String(nodeId)];
-    positionLockUntilRef.current = Date.now() + POSITION_LOCK_MS;
+    positionLockUntilRef.current = Date.now() + lockMs;
     setCurrentNodeId(nodeId);
     setCurrentLabel(label);
     setCurrentFloor(floor);
@@ -162,8 +170,14 @@ export default function Page() {
 
   function handleStairSegmentConfirmed() {
     if (!graph || !result?.path || result.path.length < 2) return;
-    const nextNodeId = result.path[1];
-    setExactGraphLocation(nextNodeId, graph.zones[String(nextNodeId)]?.label ?? "Stairwell");
+    const nextFloorNodeId =
+      result.path.find((nodeId, index) => index > 0 && graph.nodes[nodeId][2] !== currentFloor) ??
+      result.path[1];
+    setExactGraphLocation(
+      nextFloorNodeId,
+      graph.zones[String(nextFloorNodeId)]?.label ?? "Stairwell",
+      STAIR_POSITION_LOCK_MS
+    );
   }
 
   function handleOcrZoneFound(nodeId: number, label: string) {
