@@ -5,6 +5,7 @@ import ZoneRecognizer from "@/components/ZoneRecognizer";
 import QRAndCrowdRecognizer from "@/components/QRAndCrowdRecognizer";
 import PassiveStairProgress from "@/components/PassiveStairProgress";
 import CameraNavigation from "@/components/CameraNavigation";
+import FloorMap from "@/components/FloorMap";
 import { astar, nearestNodeOnFloor, type NavGraph } from "@/lib/astar";
 import {
   createCalibrationTransform,
@@ -312,6 +313,15 @@ export default function Page() {
             )}
           </div>
         </div>
+      )}
+
+      {currentNodeId !== null && (
+        <FloorMap
+          graph={graph}
+          currentFloor={currentFloor}
+          graphPosition={graphPosition}
+          path={result?.path ?? null}
+        />
       )}
 
       {currentNodeId !== null && (
