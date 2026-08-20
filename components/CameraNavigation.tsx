@@ -30,26 +30,14 @@ function routeTarget(
     return { position: null, instruction: "You have reached the exit." };
   }
 
-  let previous: [number, number] = graphPosition;
-  let distanceAlongRoute = 0;
-  let target: [number, number] | null = null;
-
-  for (const nodeId of path.slice(1)) {
-    const [x, z, nodeFloor] = graph.nodes[String(nodeId)];
-    if (nodeFloor !== floor) {
-      return {
-        position: target,
-        instruction: `Use the stairs to continue to Floor ${nodeFloor}.`,
-      };
-    }
-    distanceAlongRoute += Math.hypot(x - previous[0], z - previous[1]);
-    target = [x, z];
-    previous = target;
-    if (distanceAlongRoute >= 2.5) break;
-  }
-
-  if (!target) {
-    return { position: null, instruction: "Follow the stair instruction." };
+  const exitNodeId = path[path.length - 1];
+  const [x, z, nodeFloor] = graph.nodes[String(exitNodeId)];
+  const target: [number, number] = [x, z];
+  if (nodeFloor !== floor) {
+    return {
+      position: target,
+      instruction: `Use the stairs to continue to Floor ${nodeFloor}.`,
+    };
   }
   const directDistance = Math.hypot(target[0] - graphPosition[0], target[1] - graphPosition[1]);
   return {
