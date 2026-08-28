@@ -259,7 +259,7 @@ export default function Page() {
   if (!graph) {
     return (
       <main>
-        <h1>Indoor Wayfinder</h1>
+        <h1>Indoor Navigation</h1>
         <p className="subtitle">Loading building map…</p>
         <p className="status-warning">{gpsStatus}</p>
       </main>
@@ -268,7 +268,7 @@ export default function Page() {
 
   return (
     <main>
-      <h1>Indoor Wayfinder</h1>
+      <h1>Indoor Navigation</h1>
       <p className="subtitle">Calibrate with two QR points, then follow the live camera arrow.</p>
 
       <div className="mode-toggle">

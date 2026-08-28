@@ -1,4 +1,4 @@
-# Indoor Wayfinder
+# Indoor Navigation
 
 Camera + motion-based indoor emergency navigation, built on a nav graph
 generated from a photogrammetry scan (`nav_pipeline_fixed.py` /
