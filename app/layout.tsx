@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Emergency Wayfinder",
+  title: "Indoor Wayfinder",
   description: "Camera-based indoor emergency navigation",
 };
 
