@@ -3,44 +3,29 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Tesseract from "tesseract.js";
 import type { NavGraph } from "@/lib/astar";
+import { matchZone } from "@/lib/zones";
 
 /**
  * ZoneRecognizer -- OCR path.
  * Points the camera at EXISTING signage (room numbers, floor labels, exit
  * signs) and matches the read text against zone labels in nav_graph.json.
- * Use this where legible signage already exists; use SceneAndCrowdRecognizer
- * (visual classification) where it doesn't, e.g. unmarked stairwells.
+ * Use this where legible signage exists; use QRAndCrowdRecognizer for
+ * surveyed stickers in unmarked areas.
  */
-
-function buildZoneIndex(graph: NavGraph) {
-  const index: Record<string, number> = {};
-  for (const [nodeIdStr, tag] of Object.entries(graph.zones)) {
-    const key = tag.label.trim().toLowerCase();
-    if (!(key in index)) index[key] = parseInt(nodeIdStr, 10);
-  }
-  return index;
-}
-
-function matchZoneFromText(ocrText: string, zoneIndex: Record<string, number>) {
-  const cleaned = ocrText.toLowerCase().replace(/[^a-z0-9 ]/g, " ");
-  for (const [label, nodeId] of Object.entries(zoneIndex)) {
-    if (cleaned.includes(label)) return { label, nodeId };
-  }
-  return null;
-}
 
 export default function ZoneRecognizer({
   graph,
   onZoneFound,
+  currentFloor = 0,
 }: {
   graph: NavGraph;
+  currentFloor?: number;
   onZoneFound: (nodeId: number, label: string) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const [status, setStatus] = useState<"idle" | "scanning" | "not_found">("idle");
   const [lastText, setLastText] = useState("");
-  const zoneIndex = useMemo(() => buildZoneIndex(graph), [graph]);
 
   useEffect(() => {
     return () => cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -63,7 +48,7 @@ export default function ZoneRecognizer({
   }
 
   async function captureAndRecognize() {
-    if (!videoRef.current) return;
+    if (!videoRef.current || videoRef.current.readyState < 2 || !videoRef.current.videoWidth) { setStatus("not_found"); return; }
     setStatus("scanning");
 
     const canvas = document.createElement("canvas");
@@ -72,16 +57,18 @@ export default function ZoneRecognizer({
     const ctx = canvas.getContext("2d");
     ctx?.drawImage(videoRef.current, 0, 0);
 
+    try {
     const { data } = await Tesseract.recognize(canvas, "eng");
     setLastText(data.text);
 
-    const match = matchZoneFromText(data.text, zoneIndex);
+    const match = matchZone(graph, data.text, currentFloor);
     if (match) {
       onZoneFound(match.nodeId, match.label);
       setStatus("idle");
     } else {
       setStatus("not_found");
     }
+    } catch { setStatus("not_found"); }
   }
 
   return (
@@ -96,7 +83,7 @@ export default function ZoneRecognizer({
       {status === "not_found" && (
         <p className="status-warning">
           Couldn&apos;t match that sign to a known zone. Try getting closer, or use
-          scene recognition instead. Last read: &ldquo;{lastText.slice(0, 80)}&rdquo;
+          a surveyed QR sticker instead. Last read: &ldquo;{lastText.slice(0, 80)}&rdquo;
         </p>
       )}
     </div>
