@@ -1,20 +1,28 @@
 {
   "id": "admin",
   "name": "Admin Building",
-  "glb": "/models/admin.glb",
-  "graph": null,
+  "glb": "/models/admin-rooms.glb",
+  "graph": "/graphs/admin-rooms.json",
   "modelVerified": false,
   "graphVerified": false,
   "floorsVerified": false,
   "floors": [
     {
       "index": 0,
+      "label": "Ground floor",
+      "displayNumber": 1,
       "baseY": 0,
-      "height": 3
+      "height": 3,
+      "slabThicknessM": 0.18
     }
   ],
   "georef": null,
-  "graphToModel": null,
+  "graphToModel": {
+    "dx": 0,
+    "dz": 0,
+    "rotationDeg": 0,
+    "scale": 1
+  },
   "settings": {
     "crowd": {
       "busy": 3,
@@ -23,7 +31,10 @@
       "ttlMs": 600000
     },
     "hazards": {
-      "multipliers": [2, 6],
+      "multipliers": [
+        2,
+        6
+      ],
       "ttlMs": 1800000,
       "confirmationFrames": 5,
       "windowFrames": 8,
@@ -57,5 +68,164 @@
       "offRouteM": 4,
       "offRouteMs": 3000
     }
-  }
+  },
+  "scanGlb": "/models/admin.glb",
+  "modelKind": "room-layout",
+  "modelRevision": "room-plan-2026-11-09-v1",
+  "planImage": "/plans/campus-floor-plan.png",
+  "rooms": [
+    {
+      "id": "admin-f0-stock-room",
+      "label": "Stock Room",
+      "kind": "storage",
+      "floor": 0,
+      "rect": [
+        -18,
+        -4.6,
+        -12,
+        0
+      ],
+      "doors": [
+        [
+          -17,
+          0
+        ]
+      ],
+      "nodeId": 100027,
+      "doorNodeIds": [
+        100028
+      ],
+      "color": "#dff0d9",
+      "estimated": true
+    },
+    {
+      "id": "admin-f0-euler",
+      "label": "Euler",
+      "kind": "classroom",
+      "floor": 0,
+      "rect": [
+        -12,
+        -4.6,
+        -6,
+        0
+      ],
+      "doors": [
+        [
+          -11,
+          0
+        ]
+      ],
+      "nodeId": 100029,
+      "doorNodeIds": [
+        100030
+      ],
+      "color": "#dff0d9",
+      "estimated": true
+    },
+    {
+      "id": "admin-f0-admin-office",
+      "label": "Admin Office",
+      "kind": "office",
+      "floor": 0,
+      "rect": [
+        -6,
+        -4.6,
+        0,
+        0
+      ],
+      "doors": [
+        [
+          -5,
+          0
+        ]
+      ],
+      "nodeId": 100031,
+      "doorNodeIds": [
+        100032
+      ],
+      "color": "#dff0d9",
+      "estimated": true
+    },
+    {
+      "id": "admin-f0-shs-com-lab",
+      "label": "SHS Com Lab",
+      "kind": "computer-lab",
+      "floor": 0,
+      "rect": [
+        0,
+        -4.6,
+        6,
+        0
+      ],
+      "doors": [
+        [
+          1,
+          0
+        ]
+      ],
+      "nodeId": 100033,
+      "doorNodeIds": [
+        100034
+      ],
+      "color": "#dff0d9",
+      "estimated": true
+    },
+    {
+      "id": "admin-f0-computer-lab",
+      "label": "Computer Lab",
+      "kind": "computer-lab",
+      "floor": 0,
+      "rect": [
+        6,
+        -4.6,
+        12,
+        0
+      ],
+      "doors": [
+        [
+          7,
+          0
+        ]
+      ],
+      "nodeId": 100035,
+      "doorNodeIds": [
+        100036
+      ],
+      "color": "#dff0d9",
+      "estimated": true
+    },
+    {
+      "id": "admin-f0-it-hub",
+      "label": "IT Hub",
+      "kind": "computer-lab",
+      "floor": 0,
+      "rect": [
+        12,
+        -4.6,
+        18,
+        0
+      ],
+      "doors": [
+        [
+          13,
+          0
+        ]
+      ],
+      "nodeId": 100037,
+      "doorNodeIds": [
+        100038
+      ],
+      "color": "#dff0d9",
+      "estimated": true
+    }
+  ],
+  "assumptions": [
+    "Horizontal dimensions are illustrative estimates; the supplied diagram has no scale.",
+    "Room order and named uses follow the supplied plan; door widths, window openings and furniture are estimated.",
+    "The central projection is treated as an entrance lobby on the ground floor and an open landing on upper floors.",
+    "The central ground-floor entrance is an assumed route-preview destination, not a verified emergency exit.",
+    "The model has an open roof for inspection; cutaway wall display is optional.",
+    "The original scans are preserved as references. Their geometry is not registered to this reconstruction."
+  ],
+  "heightSource": "Estimated 3.0 m floor height; no Admin measurement supplied."
 }

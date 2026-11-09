@@ -1,0 +1,18 @@
+[
+  {
+    "buildingId": "admin",
+    "rooms": 6,
+    "floors": 1,
+    "nodes": 39,
+    "glbBytes": 147608,
+    "estimated": true
+  },
+  {
+    "buildingId": "ynares",
+    "rooms": 15,
+    "floors": 3,
+    "nodes": 132,
+    "glbBytes": 354316,
+    "estimated": true
+  }
+]

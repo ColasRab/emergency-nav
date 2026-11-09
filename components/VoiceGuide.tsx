@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import type { BuildingConfig } from "@/lib/buildings";
+import { floorNumber, type BuildingConfig } from "@/lib/buildings";
 import {
   instructionText,
   phrase,
@@ -111,7 +111,9 @@ export default function VoiceGuide({
       scheduler.current.reset();
     speaker.current?.speak({
       id: `event:${event.id}`,
-      text: phrase(event.key, language, { floor: event.floor ?? 0 }),
+      text: phrase(event.key, language, {
+        floor: floorNumber(config, event.floor ?? 0),
+      }),
       priority: event.priority,
       expiresAt: Date.now() + 5000,
     });

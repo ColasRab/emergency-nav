@@ -52,14 +52,14 @@ async function mockApi(context: BrowserContext, rows: Row[]) {
     }
   });
 }
-test("both scans load and building switching clears position", async ({
+test("room models load and building switching clears position", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByText("Survey setup required.")).toBeVisible();
-  await expect(
-    page.getByText(/Loaded in .*scale and floors unverified/),
-  ).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText("Estimated reconstruction.")).toBeVisible();
+  await expect(page.getByText(/Loaded in .*estimated room model/)).toBeVisible({
+    timeout: 15000,
+  });
   await page
     .getByRole("combobox", { name: "Building", exact: true })
     .selectOption("ynares");
@@ -67,14 +67,20 @@ test("both scans load and building switching clears position", async ({
     page.getByLabel("Choose your approximate location"),
   ).toBeVisible();
   await page.getByLabel("Displayed floor").selectOption("1");
-  await page.getByLabel("Choose your approximate location").selectOption("509");
-  await expect(page.getByText(/Floor 1 · Estimated uncertainty/)).toBeVisible();
+  await page
+    .getByLabel("Choose your approximate location")
+    .selectOption({ label: "Rutherford" });
+  await expect(
+    page.getByText(/2nd floor.*Estimated uncertainty/),
+  ).toBeVisible();
   await page
     .getByRole("combobox", { name: "Building", exact: true })
     .selectOption("admin");
-  await expect(page.getByLabel("Choose your approximate location")).toHaveCount(
-    0,
+  await expect(page.getByLabel("Choose your approximate location")).toHaveValue(
+    "",
   );
+  await expect(page.locator(".room-card")).toHaveCount(6);
+  await expect(page.getByText(/Estimated uncertainty/)).toHaveCount(0);
 });
 test("two sessions share a scoped report within five seconds", async ({
   browser,
@@ -96,7 +102,9 @@ test("two sessions share a scoped report within five seconds", async ({
     ).toBeVisible();
   }
   await p.getByLabel("Displayed floor").selectOption("1");
-  await p.getByLabel("Choose your approximate location").selectOption("509");
+  await p
+    .getByLabel("Choose your approximate location")
+    .selectOption({ label: "Rutherford" });
   await p.getByText("Report hazard", { exact: true }).click();
   await p.getByLabel("Hazard type").selectOption("blocked");
   await p
@@ -132,7 +140,7 @@ test("offline reports survive reload and remain explicitly local", async ({
             id: "00000000-0000-4000-8000-000000000004",
             buildingId: "ynares",
             floor: 0,
-            nodeIds: [1],
+            nodeIds: [200000],
             type: "obstruction",
             severity: 1,
             confidence: 1,
@@ -180,9 +188,9 @@ test("setup pages load and mobile layout has no horizontal overflow", async ({
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(
-    page.getByText(/Loaded in .*scale and floors unverified/),
-  ).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText(/Loaded in .*estimated room model/)).toBeVisible({
+    timeout: 15000,
+  });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -201,7 +209,7 @@ test("live Supabase read endpoint is available and invalid writes are rejected",
   });
   expect(invalid.status()).toBe(400);
 });
-test("records local scan rendering measurements", async ({ page }) => {
+test("records local room-model rendering measurements", async ({ page }) => {
   const measurements = [];
   await page.goto("/admin/alignment");
   for (const id of ["admin", "ynares"]) {
@@ -209,10 +217,10 @@ test("records local scan rendering measurements", async ({ page }) => {
       .getByRole("combobox", { name: "Building", exact: true })
       .selectOption(id);
     await expect(
-      page.getByText(/Loaded in .*scale and floors unverified/),
+      page.getByText(/Loaded in .*estimated room model/),
     ).toBeVisible({ timeout: 15000 });
     const loadStatus = await page
-      .getByText(/Loaded in .*scale and floors unverified/)
+      .getByText(/Loaded in .*estimated room model/)
       .innerText();
     await page.getByText("Preview performance", { exact: true }).click();
     await page.getByRole("button", { name: "Run rendering check" }).click();
@@ -234,4 +242,72 @@ test("records local scan rendering measurements", async ({ page }) => {
     path: "reports/preview-desktop.png",
     fullPage: false,
   });
+});
+test("reconstructed rooms, full building and original scan are inspectable", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1320, height: 1000 });
+  await page.goto("/");
+  await expect(page.locator(".room-card")).toHaveCount(6);
+  await expect(
+    page.getByText(/Loaded in .*estimated room model/),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Top-down view", exact: true })
+    .click();
+  await expect(
+    page.getByText(/Loaded in .*estimated room model/),
+  ).toBeVisible();
+  await page
+    .locator(".scan-panel")
+    .screenshot({ path: "reports/reconstructed-admin.png" });
+  await page
+    .getByRole("combobox", { name: "Building", exact: true })
+    .selectOption("ynares");
+  for (const [floor, count, label] of [
+    ["0", 6, "Curie"],
+    ["1", 5, "Marsden"],
+    ["2", 4, "21st CLEM"],
+  ] as const) {
+    await page.getByLabel("Displayed floor").selectOption(floor);
+    await expect(page.locator(".room-card")).toHaveCount(count);
+    await page
+      .locator(".room-grid")
+      .getByRole("button", { name: new RegExp(label) })
+      .click();
+    await expect(
+      page.getByText(new RegExp(`Selected:.*${label}`)),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Loaded in .*estimated room model/),
+    ).toBeVisible();
+    await page
+      .locator(".scan-panel")
+      .screenshot({
+        path: `reports/reconstructed-ynares-floor-${Number(floor) + 1}.png`,
+      });
+  }
+  await page
+    .getByRole("button", { name: "Show all floors", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Angled view", exact: true }).click();
+  await expect(
+    page.getByText(/Loaded in .*estimated room model/),
+  ).toBeVisible();
+  await page
+    .locator(".scan-panel")
+    .screenshot({ path: "reports/reconstructed-ynares-building.png" });
+  await page
+    .getByRole("button", { name: "Original scan", exact: true })
+    .click();
+  await expect(page.getByText(/Loaded in .*original scan/)).toBeVisible();
+  await expect(
+    page.getByText(
+      "Scan coordinates are separate; room and route overlays are hidden.",
+    ),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Room model", exact: true }).click();
+  await expect(
+    page.getByText(/Loaded in .*estimated room model/),
+  ).toBeVisible();
 });

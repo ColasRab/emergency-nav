@@ -9,6 +9,7 @@ import {
 } from "@/lib/clientData";
 import {
   buildingSchema,
+  floorLabel,
   type BuildingId,
   type BuildingConfig,
 } from "@/lib/buildings";
@@ -94,7 +95,7 @@ export default function AlignmentPage() {
             >
               {draft.floors.map((f) => (
                 <option key={f.index} value={f.index}>
-                  Floor {f.index}
+                  {floorLabel(draft, f.index)}
                 </option>
               ))}
             </select>

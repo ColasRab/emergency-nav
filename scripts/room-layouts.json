@@ -1,0 +1,191 @@
+{
+  "sourcePlan": "/plans/campus-floor-plan.png",
+  "revision": "room-plan-2026-11-09-v1",
+  "assumptions": [
+    "Horizontal dimensions are illustrative estimates; the supplied diagram has no scale.",
+    "Room order and named uses follow the supplied plan; door widths, window openings and furniture are estimated.",
+    "The central projection is treated as an entrance lobby on the ground floor and an open landing on upper floors.",
+    "The central ground-floor entrance is an assumed route-preview destination, not a verified emergency exit.",
+    "The model has an open roof for inspection; cutaway wall display is optional.",
+    "The original scans are preserved as references. Their geometry is not registered to this reconstruction."
+  ],
+  "buildings": [
+    {
+      "id": "admin",
+      "name": "Admin Building",
+      "width": 36,
+      "roomDepth": 4.6,
+      "corridorDepth": 2,
+      "projectionWidth": 10.8,
+      "projectionDepth": 4.5,
+      "serviceBayWidth": 0,
+      "nodeIdBase": 100000,
+      "heightSource": "Estimated 3.0 m floor height; no Admin measurement supplied.",
+      "floors": [
+        {
+          "index": 0,
+          "label": "Ground floor",
+          "displayNumber": 1,
+          "baseY": 0,
+          "height": 3,
+          "slabThicknessM": 0.18,
+          "corridorColor": "#c9c8f3",
+          "rooms": [
+            {
+              "id": "stock-room",
+              "label": "Stock Room",
+              "kind": "storage",
+              "fraction": [0, 0.1666666667],
+              "color": "#dff0d9"
+            },
+            {
+              "id": "euler",
+              "label": "Euler",
+              "kind": "classroom",
+              "fraction": [0.1666666667, 0.3333333333],
+              "color": "#dff0d9"
+            },
+            {
+              "id": "admin-office",
+              "label": "Admin Office",
+              "kind": "office",
+              "fraction": [0.3333333333, 0.5],
+              "color": "#dff0d9"
+            },
+            {
+              "id": "shs-com-lab",
+              "label": "SHS Com Lab",
+              "kind": "computer-lab",
+              "fraction": [0.5, 0.6666666667],
+              "color": "#dff0d9"
+            },
+            {
+              "id": "computer-lab",
+              "label": "Computer Lab",
+              "kind": "computer-lab",
+              "fraction": [0.6666666667, 0.8333333333],
+              "color": "#dff0d9"
+            },
+            {
+              "id": "it-hub",
+              "label": "IT Hub",
+              "kind": "computer-lab",
+              "fraction": [0.8333333333, 1],
+              "color": "#dff0d9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ynares",
+      "name": "Old Ynares — SHS Building",
+      "width": 32,
+      "roomDepth": 5.6,
+      "corridorDepth": 2,
+      "projectionWidth": 10.7,
+      "projectionDepth": 4.5,
+      "serviceBayWidth": 4.8,
+      "nodeIdBase": 200000,
+      "heightSource": "User-confirmed floor-to-floor heights, including slab thickness.",
+      "floors": [
+        {
+          "index": 0,
+          "label": "1st floor",
+          "displayNumber": 1,
+          "baseY": 0,
+          "height": 3.095,
+          "slabThicknessM": 0.36,
+          "corridorColor": "#d3e0ce",
+          "rooms": [
+            {
+              "id": "science-laboratory",
+              "label": "Science Laboratory",
+              "kind": "science-lab",
+              "fraction": [0, 0.3333333333],
+              "color": "#dcebd5"
+            },
+            {
+              "id": "curie",
+              "label": "Curie",
+              "kind": "classroom",
+              "fraction": [0.3333333333, 0.6666666667],
+              "color": "#e3f1dc"
+            },
+            {
+              "id": "faculty-room",
+              "label": "Faculty Room",
+              "kind": "office",
+              "fraction": [0.6666666667, 0.8333333333],
+              "color": "#e3f1dc"
+            },
+            {
+              "id": "clinic",
+              "label": "Clinic",
+              "kind": "clinic",
+              "fraction": [0.8333333333, 1],
+              "color": "#e3f1dc"
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "label": "2nd floor",
+          "displayNumber": 2,
+          "baseY": 3.095,
+          "height": 3.05,
+          "slabThicknessM": 0.17,
+          "corridorColor": "#d3e0ce",
+          "rooms": [
+            {
+              "id": "rutherford",
+              "label": "Rutherford",
+              "kind": "classroom",
+              "fraction": [0, 0.3333333333],
+              "color": "#f5cdd0"
+            },
+            {
+              "id": "marsden",
+              "label": "Marsden",
+              "kind": "classroom",
+              "fraction": [0.3333333333, 0.6666666667],
+              "color": "#f5cdd0"
+            },
+            {
+              "id": "franklin",
+              "label": "Franklin",
+              "kind": "classroom",
+              "fraction": [0.6666666667, 1],
+              "color": "#f5cdd0"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "label": "3rd floor",
+          "displayNumber": 3,
+          "baseY": 6.145,
+          "height": 2.84,
+          "slabThicknessM": 0.16,
+          "corridorColor": "#d3e0ce",
+          "rooms": [
+            {
+              "id": "darwin",
+              "label": "Darwin",
+              "kind": "classroom",
+              "fraction": [0, 0.63],
+              "color": "#e3f1dc"
+            },
+            {
+              "id": "21st-clem",
+              "label": "21st CLEM",
+              "kind": "classroom",
+              "fraction": [0.63, 1],
+              "color": "#8583bd"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

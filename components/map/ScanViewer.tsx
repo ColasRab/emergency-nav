@@ -11,6 +11,8 @@ import {
   loadScan,
   setFloorVisibility,
   type OverlayPoint,
+  setWallCutaway,
+  roomOutline,
 } from "@/lib/map/scene";
 export type ModelHit = { position: Vec3; normal: [number, number] };
 export default function ScanViewer({
@@ -23,6 +25,8 @@ export default function ScanViewer({
   user,
   onPick,
   diagnostics = false,
+  selectedRoomId,
+  onRoomSelect,
 }: {
   config: BuildingConfig;
   graph?: NavGraph | null;
@@ -33,6 +37,8 @@ export default function ScanViewer({
   user?: Vec3;
   onPick?: (hit: ModelHit) => void;
   diagnostics?: boolean;
+  selectedRoomId?: string;
+  onRoomSelect?: (roomId: string) => void;
 }) {
   const host = useRef<HTMLDivElement>(null),
     state = useRef<{
@@ -41,7 +47,16 @@ export default function ScanViewer({
       overlay: THREE.Group;
       render: () => void;
       benchmark: () => Promise<number>;
+      frame: () => void;
     } | null>(null);
+  const [showScan, setShowScan] = useState(false),
+    [cutaway, setCutaway] = useState(true),
+    [allFloors, setAllFloors] = useState(false);
+  const viewingScan = showScan && !!config.scanGlb;
+  const modelUrl = viewingScan ? config.scanGlb : config.glb;
+  const overlayConfig = viewingScan
+    ? { ...config, graphToModel: null }
+    : config;
   const latest = useRef({
     config,
     graph,
@@ -53,21 +68,37 @@ export default function ScanViewer({
     onPick,
   });
   latest.current = {
-    config,
+    config: overlayConfig,
     graph,
     path,
     floor,
     showGraph,
-    points,
+    points: viewingScan ? [] : points,
     user,
     onPick,
   };
+  const extras = useRef({
+    selectedRoomId,
+    onRoomSelect,
+    cutaway,
+    viewingScan,
+    allFloors,
+  });
+  extras.current = {
+    selectedRoomId,
+    onRoomSelect,
+    cutaway,
+    viewingScan,
+    allFloors,
+  };
+  useEffect(() => setShowScan(false), [config.id]);
+  useEffect(() => setAllFloors(false), [floor, config.id]);
   const [status, setStatus] = useState("Loading scan…"),
     [preset, setPreset] = useState(false);
   const [fps, setFps] = useState<number | null>(null),
     [measuring, setMeasuring] = useState(false);
   useEffect(() => {
-    if (!host.current || !config.glb) return;
+    if (!host.current || !modelUrl) return;
     setStatus("Loading scan…");
     setFps(null);
     let stopped = false,
@@ -81,6 +112,9 @@ export default function ScanViewer({
       return;
     }
     const container = host.current;
+    renderer.localClippingEnabled = true;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
@@ -95,6 +129,49 @@ export default function ScanViewer({
     let overlay = new THREE.Group(),
       model = new THREE.Group();
     scene.add(overlay, model);
+    const frameModel = () => {
+      const box = new THREE.Box3().setFromObject(model),
+        l = latest.current,
+        e = extras.current;
+      if (
+        !e.viewingScan &&
+        l.config.modelKind === "room-layout" &&
+        !e.allFloors
+      ) {
+        const f = l.config.floors.find((f) => f.index === l.floor);
+        if (f) {
+          box.min.y = f.baseY - (f.slabThicknessM ?? 0.15);
+          box.max.y = f.baseY + (e.cutaway ? 1.7 : f.height);
+        }
+      }
+      const center = box.getCenter(new THREE.Vector3()),
+        direction = new THREE.Vector3(
+          preset ? 0 : 0.12,
+          preset ? 1 : 0.85,
+          preset ? 0.001 : 0.7,
+        ).normalize(),
+        right = new THREE.Vector3(0, 1, 0).cross(direction).normalize(),
+        up = direction.clone().cross(right).normalize(),
+        tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+      let distance = 1;
+      for (const x of [box.min.x, box.max.x])
+        for (const y of [box.min.y, box.max.y])
+          for (const z of [box.min.z, box.max.z]) {
+            const p = new THREE.Vector3(x, y, z).sub(center),
+              along = p.dot(direction);
+            distance = Math.max(
+              distance,
+              along + Math.abs(p.dot(right)) / (tan * camera.aspect),
+              along + Math.abs(p.dot(up)) / tan,
+            );
+          }
+      controls.target.copy(center);
+      camera.position.copy(center).addScaledVector(direction, distance * 1.14);
+      camera.far = Math.max(200, distance * 20);
+      camera.updateProjectionMatrix();
+      camera.lookAt(center);
+      controls.update();
+    };
     const render = () => {
       if (!stopped) renderer.render(scene, camera);
     };
@@ -122,6 +199,7 @@ export default function ScanViewer({
       renderer.setSize(w, h);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
+      if (state.current) frameModel();
       render();
     });
     resize.observe(container);
@@ -137,7 +215,7 @@ export default function ScanViewer({
     const pick = (e: PointerEvent) => {
       if (
         Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5 ||
-        !latest.current.onPick
+        (!latest.current.onPick && !extras.current.onRoomSelect)
       )
         return;
       const rect = renderer.domElement.getBoundingClientRect();
@@ -151,6 +229,15 @@ export default function ScanViewer({
       );
       const hit = ray.intersectObject(model, true)[0];
       if (!hit?.face) return;
+      const roomId =
+        hit.object.userData.roomId ?? hit.object.parent?.userData.roomId;
+      if (
+        !extras.current.viewingScan &&
+        typeof roomId === "string" &&
+        latest.current.config.rooms?.some((r) => r.id === roomId)
+      )
+        extras.current.onRoomSelect?.(roomId);
+      if (!latest.current.onPick) return;
       const normal = hit.face.normal
         .clone()
         .transformDirection(hit.object.matrixWorld);
@@ -167,7 +254,7 @@ export default function ScanViewer({
     renderer.domElement.addEventListener("pointerdown", pointerDown);
     renderer.domElement.addEventListener("pointerup", pick);
     const started = performance.now();
-    loadScan(config.glb)
+    loadScan(modelUrl)
       .then((gltf) => {
         if (stopped) {
           disposeObject(gltf.scene);
@@ -176,24 +263,30 @@ export default function ScanViewer({
         scene.remove(model);
         model = gltf.scene;
         scene.add(model);
-        const box = new THREE.Box3().setFromObject(model),
-          center = box.getCenter(new THREE.Vector3()),
-          size = box.getSize(new THREE.Vector3()).length();
-        controls.target.copy(center);
-        camera.position
-          .copy(center)
-          .add(
-            new THREE.Vector3(
-              size * 0.5,
-              preset ? size : size * 0.6,
-              preset ? 0.001 : size * 0.5,
-            ),
-          );
-        camera.lookAt(center);
-        camera.far = Math.max(200, size * 20);
-        camera.updateProjectionMatrix();
-        setFloorVisibility(model, latest.current.floor);
-        state.current = { scene, model, overlay, render, benchmark };
+        frameModel();
+        setFloorVisibility(
+          model,
+          latest.current.floor,
+          extras.current.allFloors,
+        );
+        setWallCutaway(
+          model,
+          !extras.current.viewingScan &&
+            !extras.current.allFloors &&
+            extras.current.cutaway &&
+            config.modelKind === "room-layout"
+            ? (config.floors.find((f) => f.index === latest.current.floor)
+                ?.baseY ?? 0) + 1.15
+            : null,
+        );
+        state.current = {
+          scene,
+          model,
+          overlay,
+          render,
+          benchmark,
+          frame: frameModel,
+        };
         const l = latest.current;
         scene.remove(overlay);
         disposeObject(overlay);
@@ -206,11 +299,13 @@ export default function ScanViewer({
           l.user,
           l.points,
         );
+        if (!extras.current.viewingScan)
+          overlay.add(roomOutline(l.config, extras.current.selectedRoomId));
         scene.add(overlay);
         state.current.overlay = overlay;
         render();
         setStatus(
-          `Loaded in ${((performance.now() - started) / 1000).toFixed(1)} s · ${config.modelVerified ? "surveyed model" : "scale and floors unverified"}`,
+          `Loaded in ${((performance.now() - started) / 1000).toFixed(1)} s · ${!viewingScan && config.modelKind === "room-layout" ? "estimated room model" : config.modelVerified ? "surveyed model" : "original scan — scale unverified"}`,
         );
       })
       .catch(() => {
@@ -231,27 +326,86 @@ export default function ScanViewer({
       renderer.domElement.removeEventListener("pointerup", pick);
       renderer.domElement.remove();
     };
-  }, [config.id, config.glb, config.modelVerified, preset]);
+  }, [config.id, modelUrl, config.modelVerified, config.modelKind, preset]);
   useEffect(() => {
     const s = state.current;
     if (!s) return;
-    setFloorVisibility(s.model, floor);
+    setFloorVisibility(s.model, floor, allFloors);
+    setWallCutaway(
+      s.model,
+      !viewingScan &&
+        !allFloors &&
+        cutaway &&
+        config.modelKind === "room-layout"
+        ? (config.floors.find((f) => f.index === floor)?.baseY ?? 0) + 1.15
+        : null,
+    );
     s.scene.remove(s.overlay);
     disposeObject(s.overlay);
     s.overlay = buildOverlay(
-      config,
+      overlayConfig,
       graph,
       path,
       floor,
       showGraph,
       user,
-      points,
+      viewingScan ? [] : points,
     );
+    if (!viewingScan) s.overlay.add(roomOutline(config, selectedRoomId));
     s.scene.add(s.overlay);
     s.render();
-  }, [config, graph, path, floor, showGraph, user, points]);
+  }, [
+    config,
+    graph,
+    path,
+    floor,
+    showGraph,
+    user,
+    points,
+    selectedRoomId,
+    cutaway,
+    viewingScan,
+    allFloors,
+  ]);
+  useEffect(() => {
+    state.current?.frame();
+    state.current?.render();
+  }, [floor, allFloors, cutaway]);
   return (
     <div className="scan-panel">
+      {config.modelKind === "room-layout" && (
+        <div className="model-toolbar">
+          <div>
+            <strong>
+              {viewingScan
+                ? "Original scan reference"
+                : "Room model from your floor plan"}
+            </strong>
+            <p>
+              {viewingScan
+                ? "Scan coordinates are separate; room and route overlays are hidden."
+                : "Estimated room sizes, openings and illustrative furniture"}
+            </p>
+          </div>
+          <div className="button-row">
+            <button
+              className={!showScan ? "active" : "secondary-button"}
+              aria-pressed={!showScan}
+              onClick={() => setShowScan(false)}
+            >
+              Room model
+            </button>
+            <button
+              className={showScan ? "active" : "secondary-button"}
+              aria-pressed={showScan}
+              onClick={() => setShowScan(true)}
+              disabled={!config.scanGlb}
+            >
+              Original scan
+            </button>
+          </div>
+        </div>
+      )}
       <div ref={host} className="scan-canvas" />
       <div className="viewer-footer">
         <span role="status">{status}</span>
@@ -261,6 +415,26 @@ export default function ScanViewer({
         >
           {preset ? "Angled view" : "Top-down view"}
         </button>
+        {!viewingScan && config.modelKind === "room-layout" && (
+          <button
+            className="secondary-button"
+            aria-pressed={cutaway}
+            onClick={() => setCutaway((c) => !c)}
+          >
+            {cutaway ? "Show full walls" : "Cutaway walls"}
+          </button>
+        )}
+        {!viewingScan &&
+          config.modelKind === "room-layout" &&
+          config.floors.length > 1 && (
+            <button
+              className="secondary-button"
+              aria-pressed={allFloors}
+              onClick={() => setAllFloors((v) => !v)}
+            >
+              {allFloors ? "Selected floor only" : "Show all floors"}
+            </button>
+          )}
       </div>
       {diagnostics && (
         <details>

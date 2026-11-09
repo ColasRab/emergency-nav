@@ -7,7 +7,22 @@ export const floorSchema = z.object({
   baseY: z.number().finite(),
   height: z.number().positive(),
   slabThicknessM: z.number().positive().optional(),
+  label: z.string().optional(),
+  displayNumber: z.number().int().optional(),
 });
+export const roomSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  kind: z.string(),
+  floor: z.number().int(),
+  rect: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+  doors: z.array(z.tuple([z.number(), z.number()])),
+  nodeId: z.number().int(),
+  doorNodeIds: z.array(z.number().int()),
+  color: z.string(),
+  estimated: z.boolean(),
+});
+export type Room = z.infer<typeof roomSchema>;
 const similaritySchema = z.object({
   dx: z.number().finite(),
   dz: z.number().finite(),
@@ -19,6 +34,13 @@ export const buildingSchema = z.object({
   name: z.string(),
   glb: z.string().nullable(),
   graph: z.string().nullable(),
+  modelKind: z.enum(["scan", "room-layout"]).default("scan"),
+  modelRevision: z.string().optional(),
+  heightSource: z.string().optional(),
+  scanGlb: z.string().optional(),
+  planImage: z.string().optional(),
+  rooms: z.array(roomSchema).optional(),
+  assumptions: z.array(z.string()).optional(),
   modelVerified: z.boolean(),
   graphVerified: z.boolean(),
   floorsVerified: z.boolean(),
@@ -82,6 +104,13 @@ export const buildingSchema = z.object({
 });
 export type BuildingConfig = z.infer<typeof buildingSchema>;
 export type Floor = z.infer<typeof floorSchema>;
+export function floorLabel(config: BuildingConfig, index: number): string {
+  const floor = config.floors.find((f) => f.index === index);
+  return floor?.label ?? `Floor ${floor?.displayNumber ?? index}`;
+}
+export function floorNumber(config: BuildingConfig, index: number): number {
+  return config.floors.find((f) => f.index === index)?.displayNumber ?? index;
+}
 export async function loadBuilding(id: BuildingId): Promise<BuildingConfig> {
   const response = await fetch(`/models/${id}.json`);
   if (!response.ok) throw new Error("Unable to load building settings.");

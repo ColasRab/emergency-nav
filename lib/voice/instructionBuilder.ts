@@ -1,5 +1,5 @@
 import type { NavGraph } from "../astar";
-import type { BuildingConfig } from "../buildings";
+import { floorNumber, type BuildingConfig } from "../buildings";
 import {
   bearing,
   graphBearing,
@@ -184,7 +184,7 @@ export function instructionText(
 ): string {
   if (instruction.kind === "arrival") return phrase("arrival", language);
   const action = phrase(instruction.kind, language, {
-    floor: instruction.targetFloor ?? instruction.floor,
+    floor: floorNumber(config, instruction.targetFloor ?? instruction.floor),
   });
   const text =
     instruction.distanceM <= config.settings.voice.immediateM

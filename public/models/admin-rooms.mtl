@@ -1,0 +1,136 @@
+newmtl plaster
+Ka 0.2 0.2 0.2
+Kd 0.8962693533719567 0.85499260812105 0.76052450467022
+d 1
+illum 2
+
+newmtl door-trim
+Ka 0.2 0.2 0.2
+Kd 0.25818285291079235 0.07036009568874305 0.054480276435339814
+d 1
+illum 2
+
+newmtl slab-edge
+Ka 0.2 0.2 0.2
+Kd 0.29613827078752575 0.37626212298046485 0.46207699964472876
+d 1
+illum 2
+
+newmtl rail
+Ka 0.2 0.2 0.2
+Kd 0.054480276435339814 0.13563332964548108 0.17788841597328695
+d 1
+illum 2
+
+newmtl window-glass
+Ka 0.2 0.2 0.2
+Kd 0.23839757380151394 0.5840784178830671 0.7230551289161951
+d 0.45
+illum 2
+
+newmtl desk
+Ka 0.2 0.2 0.2
+Kd 0.5775804404214573 0.3371636150376657 0.14412847084818123
+d 1
+illum 2
+
+newmtl chair
+Ka 0.2 0.2 0.2
+Kd 0.09084171117479915 0.1912016827303171 0.3005437944049895
+d 1
+illum 2
+
+newmtl fixtures
+Ka 0.2 0.2 0.2
+Kd 0.8631572134510892 0.9301108583738498 0.9559733532482866
+d 1
+illum 2
+
+newmtl monitor
+Ka 0.2 0.2 0.2
+Kd 0.018500220124016652 0.059511238155621766 0.08437621153575764
+d 1
+illum 2
+
+newmtl stairs
+Ka 0.2 0.2 0.2
+Kd 0.3967552307153359 0.46778379610254284 0.38642943377667954
+d 1
+illum 2
+
+newmtl corridor-0
+Ka 0.2 0.2 0.2
+Kd 0.5840784178830671 0.5775804404214573 0.8962693533719567
+d 1
+illum 2
+
+newmtl label-0-lobby
+Kd 1 1 1
+illum 1
+map_Kd admin-room-textures/label-0-lobby.png
+
+newmtl floor-admin-f0-stock-room
+Ka 0.2 0.2 0.2
+Kd 0.7379104087672317 0.8713671191959567 0.6938717612856897
+d 1
+illum 2
+
+newmtl label-0-admin-f0-stock-room
+Kd 1 1 1
+illum 1
+map_Kd admin-room-textures/label-0-admin-f0-stock-room.png
+
+newmtl floor-admin-f0-euler
+Ka 0.2 0.2 0.2
+Kd 0.7379104087672317 0.8713671191959567 0.6938717612856897
+d 1
+illum 2
+
+newmtl label-0-admin-f0-euler
+Kd 1 1 1
+illum 1
+map_Kd admin-room-textures/label-0-admin-f0-euler.png
+
+newmtl floor-admin-f0-admin-office
+Ka 0.2 0.2 0.2
+Kd 0.7379104087672317 0.8713671191959567 0.6938717612856897
+d 1
+illum 2
+
+newmtl label-0-admin-f0-admin-office
+Kd 1 1 1
+illum 1
+map_Kd admin-room-textures/label-0-admin-f0-admin-office.png
+
+newmtl floor-admin-f0-shs-com-lab
+Ka 0.2 0.2 0.2
+Kd 0.7379104087672317 0.8713671191959567 0.6938717612856897
+d 1
+illum 2
+
+newmtl label-0-admin-f0-shs-com-lab
+Kd 1 1 1
+illum 1
+map_Kd admin-room-textures/label-0-admin-f0-shs-com-lab.png
+
+newmtl floor-admin-f0-computer-lab
+Ka 0.2 0.2 0.2
+Kd 0.7379104087672317 0.8713671191959567 0.6938717612856897
+d 1
+illum 2
+
+newmtl label-0-admin-f0-computer-lab
+Kd 1 1 1
+illum 1
+map_Kd admin-room-textures/label-0-admin-f0-computer-lab.png
+
+newmtl floor-admin-f0-it-hub
+Ka 0.2 0.2 0.2
+Kd 0.7379104087672317 0.8713671191959567 0.6938717612856897
+d 1
+illum 2
+
+newmtl label-0-admin-f0-it-hub
+Kd 1 1 1
+illum 1
+map_Kd admin-room-textures/label-0-admin-f0-it-hub.png

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import AdminNav from "@/components/admin/AdminNav";
 import { useBuildingData, downloadFile } from "@/lib/clientData";
-import { buildingIds, type BuildingId } from "@/lib/buildings";
+import { buildingIds, floorLabel, type BuildingId } from "@/lib/buildings";
 import {
   anchorSchema,
   loadAnchors,
@@ -188,7 +188,7 @@ export default function AnchorsPage() {
             >
               {config.floors.map((f) => (
                 <option key={f.index} value={f.index}>
-                  Floor {f.index}
+                  {floorLabel(config, f.index)}
                 </option>
               ))}
             </select>

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import type { BuildingConfig } from "@/lib/buildings";
+import { floorLabel, type BuildingConfig } from "@/lib/buildings";
 import type { NavGraph } from "@/lib/astar";
 import type { Vec2 } from "@/lib/geo/transform";
 import { hazardTypes, type Hazard, type HazardType } from "@/lib/hazards/model";
@@ -86,8 +86,8 @@ export default function HazardReport({
     <details className="status-card">
       <summary>Report hazard</summary>
       <p>
-        Confirm a hazard you can observe. Choose its location on Floor {floor}.
-        No camera images are uploaded.
+        Confirm a hazard you can observe. Choose its location on{" "}
+        {floorLabel(config, floor)}. No camera images are uploaded.
       </p>
       <label>
         Hazard type
@@ -121,11 +121,12 @@ export default function HazardReport({
             {suggested.edge
               ? `edge ${suggested.edge.join(" ↔ ")}`
               : `node ${suggested.nodeIds[0] ?? "unavailable"}`}{" "}
-            · Floor {floor}
+            · {floorLabel(config, floor)}
           </option>
           {nearby.map(([id]) => (
             <option key={id} value={id}>
-              {graph.zones[id]?.label ?? `Nearby point ${id}`} · Floor {floor}
+              {graph.zones[id]?.label ?? `Nearby point ${id}`} ·{" "}
+              {floorLabel(config, floor)}
             </option>
           ))}
         </select>

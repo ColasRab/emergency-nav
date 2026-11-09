@@ -1,5 +1,7 @@
 # Indoor navigation implementation — 9 November 2026
 
+Room reconstruction follow-up: a subsequent user-supplied floor plan and explicit authorization to use estimates have now produced room models for Admin and all three Ynares floors. Those estimated models and matching room/door graphs are the app defaults; original scans and the legacy graph are preserved. See `room-reconstruction.md` for current room lists, assumed dimensions, exports and checks. The earlier implementation snapshot below describes the initial scan-based stage.
+
 Measurement follow-up: the user subsequently confirmed Ynares floor-to-floor heights of 3.095, 3.05 and 2.84 m, and slab thicknesses of 0.36, 0.17 and 0.16 m. The Ynares configuration now uses relative walking elevations 0, 3.095 and 6.145 m without adding slabs twice. See `ynares-measurements.md`. Model scale, first-floor origin, geographic placement and slab matching in the scan still need verification.
 
 Software implementation is complete for the available inputs. **Field commissioning remains incomplete:** the supplied models, floor elevations, exits, graph alignment and QR positions have not been surveyed. The app labels this state and does not invent geographic placement.

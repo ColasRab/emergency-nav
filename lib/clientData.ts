@@ -31,7 +31,20 @@ export function useBuildingData(id: BuildingId) {
           const draft = localStorage.getItem(draftKey(id));
           if (draft) {
             const candidate = buildingSchema.parse(JSON.parse(draft));
-            if (candidate.id === id) c = candidate;
+            if (candidate.id === id) {
+              if (
+                base.modelRevision &&
+                candidate.modelRevision !== base.modelRevision
+              ) {
+                // Keep an older scan-alignment draft available, but don't apply
+                // its transform or graph to a different reconstruction.
+                localStorage.setItem(
+                  `${draftKey(id)}:archive:${candidate.modelRevision ?? "scan"}`,
+                  draft,
+                );
+                localStorage.removeItem(draftKey(id));
+              } else c = candidate;
+            }
           }
         } catch {
           localStorage.removeItem(draftKey(id));

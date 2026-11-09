@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "models:prepare": "node --max-old-space-size=6144 scripts/prepare-model.mjs scripts/model-manifest.json"
+    "models:prepare": "node --max-old-space-size=6144 scripts/prepare-model.mjs scripts/model-manifest.json",
+    "models:rooms": "node scripts/reconstruct-rooms.mjs"
   },
   "dependencies": {
     "@gltf-transform/core": "^4.5.1",

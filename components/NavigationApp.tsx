@@ -11,8 +11,9 @@ import VoiceGuide, { type VoiceEvent } from "./VoiceGuide";
 import HazardScanner from "./HazardScanner";
 import HazardReport from "./HazardReport";
 import HazardList from "./HazardList";
+import RoomDirectory from "./RoomDirectory";
 import { useBuildingData } from "@/lib/clientData";
-import type { BuildingId } from "@/lib/buildings";
+import { floorLabel, type BuildingId } from "@/lib/buildings";
 import { nearestNodeOnFloor } from "@/lib/astar";
 import type { GpsFix } from "@/lib/calibration";
 import {
@@ -43,6 +44,7 @@ import { logEvent } from "@/lib/events";
 const ScanViewer = dynamic(() => import("./map/ScanViewer"), { ssr: false });
 const BuildingMap = dynamic(() => import("./map/BuildingMap"), { ssr: false });
 export default function NavigationApp() {
+  const [selectedRoomId, setSelectedRoomId] = useState<string | undefined>();
   const admin = useBuildingData("admin"),
     ynares = useBuildingData("ynares"),
     [id, setId] = useState<BuildingId>("admin");
@@ -352,6 +354,7 @@ export default function NavigationApp() {
   const user: Vec3 | undefined = estimate
     ? [...estimate.position, estimate.floor]
     : undefined;
+  useEffect(() => setSelectedRoomId(undefined), [id, floor]);
   return (
     <main className="wide-main">
       <h1>Emergency Wayfinder</h1>
@@ -385,7 +388,7 @@ export default function NavigationApp() {
             >
               {config.floors.map((f) => (
                 <option key={f.index} value={f.index}>
-                  Floor {f.index}
+                  {floorLabel(config, f.index)}
                 </option>
               ))}
             </select>
@@ -400,25 +403,38 @@ export default function NavigationApp() {
             !config.graphVerified ||
             !config.floorsVerified) && (
             <p className="setup-note">
-              <strong>Survey setup required.</strong> Scan scale, floor heights,
-              paths and real exits need physical verification. Routes shown here
-              are previews.
+              <strong>
+                {config.modelKind === "room-layout"
+                  ? "Estimated reconstruction."
+                  : "Survey setup required."}
+              </strong>{" "}
+              {config.modelKind === "room-layout"
+                ? "Rooms follow your floor plan. Horizontal dimensions, doorways, furniture and the entrance route are assumptions; verify them on site."
+                : "Scan scale, floor heights, paths and real exits need physical verification. Routes shown here are previews."}
             </p>
           )}
+          <ScanViewer
+            config={config}
+            graph={graph}
+            path={result?.path ?? []}
+            floor={floor}
+            user={user}
+            points={overlayPoints}
+            selectedRoomId={selectedRoomId}
+            onRoomSelect={setSelectedRoomId}
+          />
+          <RoomDirectory
+            config={config}
+            floor={floor}
+            selected={selectedRoomId}
+            onSelect={setSelectedRoomId}
+          />
           <BuildingMap
             configs={configs}
             activeId={id}
             floor={floor}
             graph={graph}
             path={result?.path ?? []}
-            user={user}
-            points={overlayPoints}
-          />
-          <ScanViewer
-            config={config}
-            graph={graph}
-            path={result?.path ?? []}
-            floor={floor}
             user={user}
             points={overlayPoints}
           />
@@ -454,7 +470,7 @@ export default function NavigationApp() {
                 <p role="status">{status}</p>
                 {estimate && (
                   <p className="status-line">
-                    Floor {currentFloor} · Estimated uncertainty ±
+                    {floorLabel(config, currentFloor)} · Estimated uncertainty ±
                     {(
                       estimate.uncertaintyM +
                       Math.max(0, now - estimate.timestamp) / 50000
@@ -633,7 +649,13 @@ export default function NavigationApp() {
           <p className="status-line" role="status">
             {store.status}
           </p>
-          <HazardList hazards={store.hazards} onAction={store.act} />
+          <HazardList
+            hazards={store.hazards}
+            onAction={store.act}
+            floorNames={Object.fromEntries(
+              config.floors.map((f) => [f.index, floorLabel(config, f.index)]),
+            )}
+          />
         </>
       )}
     </main>

@@ -1,0 +1,287 @@
+newmtl plaster
+Ka 0.2 0.2 0.2
+Kd 0.8962693533719567 0.85499260812105 0.76052450467022
+d 1
+illum 2
+
+newmtl door-trim
+Ka 0.2 0.2 0.2
+Kd 0.25818285291079235 0.07036009568874305 0.054480276435339814
+d 1
+illum 2
+
+newmtl slab-edge
+Ka 0.2 0.2 0.2
+Kd 0.29613827078752575 0.37626212298046485 0.46207699964472876
+d 1
+illum 2
+
+newmtl rail
+Ka 0.2 0.2 0.2
+Kd 0.054480276435339814 0.13563332964548108 0.17788841597328695
+d 1
+illum 2
+
+newmtl window-glass
+Ka 0.2 0.2 0.2
+Kd 0.23839757380151394 0.5840784178830671 0.7230551289161951
+d 0.45
+illum 2
+
+newmtl desk
+Ka 0.2 0.2 0.2
+Kd 0.5775804404214573 0.3371636150376657 0.14412847084818123
+d 1
+illum 2
+
+newmtl chair
+Ka 0.2 0.2 0.2
+Kd 0.09084171117479915 0.1912016827303171 0.3005437944049895
+d 1
+illum 2
+
+newmtl fixtures
+Ka 0.2 0.2 0.2
+Kd 0.8631572134510892 0.9301108583738498 0.9559733532482866
+d 1
+illum 2
+
+newmtl monitor
+Ka 0.2 0.2 0.2
+Kd 0.018500220124016652 0.059511238155621766 0.08437621153575764
+d 1
+illum 2
+
+newmtl stairs
+Ka 0.2 0.2 0.2
+Kd 0.3967552307153359 0.46778379610254284 0.38642943377667954
+d 1
+illum 2
+
+newmtl corridor-0
+Ka 0.2 0.2 0.2
+Kd 0.6514056374127929 0.7454042095350284 0.6172065624120635
+d 1
+illum 2
+
+newmtl label-0-lobby
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-0-lobby.png
+
+newmtl floor-ynares-f0-science-laboratory
+Ka 0.2 0.2 0.2
+Kd 0.7156935005005721 0.8307698767709715 0.6653872982754769
+d 1
+illum 2
+
+newmtl label-0-ynares-f0-science-laboratory
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-0-ynares-f0-science-laboratory.png
+
+newmtl floor-ynares-f0-curie
+Ka 0.2 0.2 0.2
+Kd 0.7681511472425809 0.8796223968851662 0.7156935005005721
+d 1
+illum 2
+
+newmtl label-0-ynares-f0-curie
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-0-ynares-f0-curie.png
+
+newmtl floor-ynares-f0-faculty-room
+Ka 0.2 0.2 0.2
+Kd 0.7681511472425809 0.8796223968851662 0.7156935005005721
+d 1
+illum 2
+
+newmtl label-0-ynares-f0-faculty-room
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-0-ynares-f0-faculty-room.png
+
+newmtl floor-ynares-f0-clinic
+Ka 0.2 0.2 0.2
+Kd 0.7681511472425809 0.8796223968851662 0.7156935005005721
+d 1
+illum 2
+
+newmtl label-0-ynares-f0-clinic
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-0-ynares-f0-clinic.png
+
+newmtl floor-ynares-f0-male-cr
+Ka 0.2 0.2 0.2
+Kd 0.5271151256969157 0.7304607400847158 0.8962693533719567
+d 1
+illum 2
+
+newmtl label-0-ynares-f0-male-cr
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-0-ynares-f0-male-cr.png
+
+newmtl floor-ynares-f0-female-cr
+Ka 0.2 0.2 0.2
+Kd 0.8879231178794776 0.6514056374127929 0.7379104087672317
+d 1
+illum 2
+
+newmtl label-0-ynares-f0-female-cr
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-0-ynares-f0-female-cr.png
+
+newmtl label-0-left-stairs
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-0-left-stairs.png
+
+newmtl label-0-right-stairs
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-0-right-stairs.png
+
+newmtl corridor-1
+Ka 0.2 0.2 0.2
+Kd 0.6514056374127929 0.7454042095350284 0.6172065624120635
+d 1
+illum 2
+
+newmtl label-1-lobby
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-1-lobby.png
+
+newmtl floor-ynares-f1-rutherford
+Ka 0.2 0.2 0.2
+Kd 0.913098651791473 0.6104955708001716 0.6307571363387763
+d 1
+illum 2
+
+newmtl label-1-ynares-f1-rutherford
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-1-ynares-f1-rutherford.png
+
+newmtl floor-ynares-f1-marsden
+Ka 0.2 0.2 0.2
+Kd 0.913098651791473 0.6104955708001716 0.6307571363387763
+d 1
+illum 2
+
+newmtl label-1-ynares-f1-marsden
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-1-ynares-f1-marsden.png
+
+newmtl floor-ynares-f1-franklin
+Ka 0.2 0.2 0.2
+Kd 0.913098651791473 0.6104955708001716 0.6307571363387763
+d 1
+illum 2
+
+newmtl label-1-ynares-f1-franklin
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-1-ynares-f1-franklin.png
+
+newmtl floor-ynares-f1-male-cr
+Ka 0.2 0.2 0.2
+Kd 0.5271151256969157 0.7304607400847158 0.8962693533719567
+d 1
+illum 2
+
+newmtl label-1-ynares-f1-male-cr
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-1-ynares-f1-male-cr.png
+
+newmtl floor-ynares-f1-female-cr
+Ka 0.2 0.2 0.2
+Kd 0.8879231178794776 0.6514056374127929 0.7379104087672317
+d 1
+illum 2
+
+newmtl label-1-ynares-f1-female-cr
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-1-ynares-f1-female-cr.png
+
+newmtl label-1-left-stairs
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-1-left-stairs.png
+
+newmtl label-1-right-stairs
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-1-right-stairs.png
+
+newmtl corridor-2
+Ka 0.2 0.2 0.2
+Kd 0.6514056374127929 0.7454042095350284 0.6172065624120635
+d 1
+illum 2
+
+newmtl label-2-lobby
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-2-lobby.png
+
+newmtl floor-ynares-f2-darwin
+Ka 0.2 0.2 0.2
+Kd 0.7681511472425809 0.8796223968851662 0.7156935005005721
+d 1
+illum 2
+
+newmtl label-2-ynares-f2-darwin
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-2-ynares-f2-darwin.png
+
+newmtl floor-ynares-f2-21st-clem
+Ka 0.2 0.2 0.2
+Kd 0.23455058215026167 0.22696587349938613 0.508881320845802
+d 1
+illum 2
+
+newmtl label-2-ynares-f2-21st-clem
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-2-ynares-f2-21st-clem.png
+
+newmtl floor-ynares-f2-male-cr
+Ka 0.2 0.2 0.2
+Kd 0.5271151256969157 0.7304607400847158 0.8962693533719567
+d 1
+illum 2
+
+newmtl label-2-ynares-f2-male-cr
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-2-ynares-f2-male-cr.png
+
+newmtl floor-ynares-f2-female-cr
+Ka 0.2 0.2 0.2
+Kd 0.8879231178794776 0.6514056374127929 0.7379104087672317
+d 1
+illum 2
+
+newmtl label-2-ynares-f2-female-cr
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-2-ynares-f2-female-cr.png
+
+newmtl label-2-left-stairs
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-2-left-stairs.png
+
+newmtl label-2-right-stairs
+Kd 1 1 1
+illum 1
+map_Kd ynares-room-textures/label-2-right-stairs.png

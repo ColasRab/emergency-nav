@@ -109,7 +109,7 @@
       "line": 0,
       "specs": [
         {
-          "title": "both scans load and building switching clears position",
+          "title": "room models load and building switching clears position",
           "ok": true,
           "tags": [],
           "tests": [
@@ -124,12 +124,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2511,
+                  "duration": 3710,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T08:19:25.703Z",
+                  "startTime": "2026-11-09T09:10:36.438Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -137,7 +137,7 @@
               "status": "expected"
             }
           ],
-          "id": "5d2868f7d23420c27cca-2dc68e355fde56320927",
+          "id": "5d2868f7d23420c27cca-773207a844cf41977573",
           "file": "navigation.spec.ts",
           "line": 55,
           "column": 1
@@ -158,12 +158,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 5625,
+                  "duration": 5823,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T08:19:28.674Z",
+                  "startTime": "2026-11-09T09:10:40.590Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -173,7 +173,7 @@
           ],
           "id": "5d2868f7d23420c27cca-81c0d0a5cbca79a7f332",
           "file": "navigation.spec.ts",
-          "line": 75,
+          "line": 85,
           "column": 1
         },
         {
@@ -192,12 +192,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1142,
+                  "duration": 755,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T08:19:34.320Z",
+                  "startTime": "2026-11-09T09:10:46.426Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -207,7 +207,7 @@
           ],
           "id": "5d2868f7d23420c27cca-482fdbdd5e97cbf898cb",
           "file": "navigation.spec.ts",
-          "line": 111,
+          "line": 129,
           "column": 1
         },
         {
@@ -226,12 +226,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2435,
+                  "duration": 2054,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T08:19:35.491Z",
+                  "startTime": "2026-11-09T09:10:47.195Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -241,7 +241,7 @@
           ],
           "id": "5d2868f7d23420c27cca-700c6a79e9e6a77d1c0b",
           "file": "navigation.spec.ts",
-          "line": 154,
+          "line": 176,
           "column": 1
         },
         {
@@ -260,12 +260,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 199,
+                  "duration": 176,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T08:19:37.957Z",
+                  "startTime": "2026-11-09T09:10:49.267Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -275,11 +275,11 @@
           ],
           "id": "5d2868f7d23420c27cca-9b828b130942ce74e291",
           "file": "navigation.spec.ts",
-          "line": 179,
+          "line": 201,
           "column": 1
         },
         {
-          "title": "records local scan rendering measurements",
+          "title": "records local room-model rendering measurements",
           "ok": true,
           "tags": [],
           "tests": [
@@ -294,12 +294,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 6798,
+                  "duration": 6533,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T08:19:38.170Z",
+                  "startTime": "2026-11-09T09:10:49.456Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -307,9 +307,43 @@
               "status": "expected"
             }
           ],
-          "id": "5d2868f7d23420c27cca-4749ed06a4456d70475a",
+          "id": "5d2868f7d23420c27cca-851d35024fa47cc5d3fb",
           "file": "navigation.spec.ts",
-          "line": 190,
+          "line": 212,
+          "column": 1
+        },
+        {
+          "title": "reconstructed rooms, full building and original scan are inspectable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5652,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-09T09:10:56.001Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "5d2868f7d23420c27cca-8f85bc5188f4034a2a7f",
+          "file": "navigation.spec.ts",
+          "line": 246,
           "column": 1
         }
       ]
@@ -317,9 +351,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-11-09T08:19:23.198Z",
-    "duration": 22493.438,
-    "expected": 6,
+    "startTime": "2026-11-09T09:10:33.982Z",
+    "duration": 28203.375,
+    "expected": 7,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

@@ -1,0 +1,445 @@
+{
+  "buildingId": "ynares",
+  "revision": "room-plan-2026-11-09-v1",
+  "sourcePlan": "/plans/campus-floor-plan.png",
+  "estimated": true,
+  "dimensions": {
+    "width": 32,
+    "roomDepth": 5.6,
+    "corridorDepth": 2,
+    "projectionWidth": 10.7,
+    "projectionDepth": 4.5
+  },
+  "heightSource": "User-confirmed floor-to-floor heights, including slab thickness.",
+  "assumptions": [
+    "Horizontal dimensions are illustrative estimates; the supplied diagram has no scale.",
+    "Room order and named uses follow the supplied plan; door widths, window openings and furniture are estimated.",
+    "The central projection is treated as an entrance lobby on the ground floor and an open landing on upper floors.",
+    "The central ground-floor entrance is an assumed route-preview destination, not a verified emergency exit.",
+    "The model has an open roof for inspection; cutaway wall display is optional.",
+    "The original scans are preserved as references. Their geometry is not registered to this reconstruction."
+  ],
+  "floors": [
+    {
+      "index": 0,
+      "label": "1st floor",
+      "displayNumber": 1,
+      "baseY": 0,
+      "height": 3.095,
+      "slabThicknessM": 0.36
+    },
+    {
+      "index": 1,
+      "label": "2nd floor",
+      "displayNumber": 2,
+      "baseY": 3.095,
+      "height": 3.05,
+      "slabThicknessM": 0.17
+    },
+    {
+      "index": 2,
+      "label": "3rd floor",
+      "displayNumber": 3,
+      "baseY": 6.145,
+      "height": 2.84,
+      "slabThicknessM": 0.16
+    }
+  ],
+  "rooms": [
+    {
+      "id": "ynares-f0-science-laboratory",
+      "label": "Science Laboratory",
+      "kind": "science-lab",
+      "floor": 0,
+      "rect": [
+        -11.2,
+        -5.6,
+        -3.7333,
+        0
+      ],
+      "doors": [
+        [
+          -10.2,
+          0
+        ],
+        [
+          -4.7333,
+          0
+        ]
+      ],
+      "nodeId": 200027,
+      "doorNodeIds": [
+        200028,
+        200029
+      ],
+      "color": "#dcebd5",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f0-curie",
+      "label": "Curie",
+      "kind": "classroom",
+      "floor": 0,
+      "rect": [
+        -3.7333,
+        -5.6,
+        3.7333,
+        0
+      ],
+      "doors": [
+        [
+          -2.7333,
+          0
+        ],
+        [
+          2.7333,
+          0
+        ]
+      ],
+      "nodeId": 200030,
+      "doorNodeIds": [
+        200031,
+        200032
+      ],
+      "color": "#e3f1dc",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f0-faculty-room",
+      "label": "Faculty Room",
+      "kind": "office",
+      "floor": 0,
+      "rect": [
+        3.7333,
+        -5.6,
+        7.4667,
+        0
+      ],
+      "doors": [
+        [
+          4.7333,
+          0
+        ]
+      ],
+      "nodeId": 200033,
+      "doorNodeIds": [
+        200034
+      ],
+      "color": "#e3f1dc",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f0-clinic",
+      "label": "Clinic",
+      "kind": "clinic",
+      "floor": 0,
+      "rect": [
+        7.4667,
+        -5.6,
+        11.2,
+        0
+      ],
+      "doors": [
+        [
+          8.4667,
+          0
+        ]
+      ],
+      "nodeId": 200035,
+      "doorNodeIds": [
+        200036
+      ],
+      "color": "#e3f1dc",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f0-male-cr",
+      "label": "Male Comfort Room",
+      "kind": "toilet",
+      "floor": 0,
+      "rect": [
+        -16,
+        -5.6,
+        -11.2,
+        -3.4
+      ],
+      "doors": [
+        [
+          -12.05,
+          -3.4
+        ]
+      ],
+      "nodeId": 200037,
+      "doorNodeIds": [
+        200038
+      ],
+      "color": "#c0def3",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f0-female-cr",
+      "label": "Female Comfort Room",
+      "kind": "toilet",
+      "floor": 0,
+      "rect": [
+        11.2,
+        -5.6,
+        16,
+        -3.4
+      ],
+      "doors": [
+        [
+          12.05,
+          -3.4
+        ]
+      ],
+      "nodeId": 200040,
+      "doorNodeIds": [
+        200041
+      ],
+      "color": "#f2d3df",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f1-rutherford",
+      "label": "Rutherford",
+      "kind": "classroom",
+      "floor": 1,
+      "rect": [
+        -11.2,
+        -5.6,
+        -3.7333,
+        0
+      ],
+      "doors": [
+        [
+          -10.2,
+          0
+        ],
+        [
+          -4.7333,
+          0
+        ]
+      ],
+      "nodeId": 200073,
+      "doorNodeIds": [
+        200074,
+        200075
+      ],
+      "color": "#f5cdd0",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f1-marsden",
+      "label": "Marsden",
+      "kind": "classroom",
+      "floor": 1,
+      "rect": [
+        -3.7333,
+        -5.6,
+        3.7333,
+        0
+      ],
+      "doors": [
+        [
+          -2.7333,
+          0
+        ],
+        [
+          2.7333,
+          0
+        ]
+      ],
+      "nodeId": 200076,
+      "doorNodeIds": [
+        200077,
+        200078
+      ],
+      "color": "#f5cdd0",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f1-franklin",
+      "label": "Franklin",
+      "kind": "classroom",
+      "floor": 1,
+      "rect": [
+        3.7333,
+        -5.6,
+        11.2,
+        0
+      ],
+      "doors": [
+        [
+          4.7333,
+          0
+        ],
+        [
+          10.2,
+          0
+        ]
+      ],
+      "nodeId": 200079,
+      "doorNodeIds": [
+        200080,
+        200081
+      ],
+      "color": "#f5cdd0",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f1-male-cr",
+      "label": "Male Comfort Room",
+      "kind": "toilet",
+      "floor": 1,
+      "rect": [
+        -16,
+        -5.6,
+        -11.2,
+        -3.4
+      ],
+      "doors": [
+        [
+          -12.05,
+          -3.4
+        ]
+      ],
+      "nodeId": 200082,
+      "doorNodeIds": [
+        200083
+      ],
+      "color": "#c0def3",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f1-female-cr",
+      "label": "Female Comfort Room",
+      "kind": "toilet",
+      "floor": 1,
+      "rect": [
+        11.2,
+        -5.6,
+        16,
+        -3.4
+      ],
+      "doors": [
+        [
+          12.05,
+          -3.4
+        ]
+      ],
+      "nodeId": 200085,
+      "doorNodeIds": [
+        200086
+      ],
+      "color": "#f2d3df",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f2-darwin",
+      "label": "Darwin",
+      "kind": "classroom",
+      "floor": 2,
+      "rect": [
+        -11.2,
+        -5.6,
+        2.912,
+        0
+      ],
+      "doors": [
+        [
+          -10.2,
+          0
+        ],
+        [
+          1.912,
+          0
+        ]
+      ],
+      "nodeId": 200116,
+      "doorNodeIds": [
+        200117,
+        200118
+      ],
+      "color": "#e3f1dc",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f2-21st-clem",
+      "label": "21st CLEM",
+      "kind": "classroom",
+      "floor": 2,
+      "rect": [
+        2.912,
+        -5.6,
+        11.2,
+        0
+      ],
+      "doors": [
+        [
+          3.912,
+          0
+        ],
+        [
+          10.2,
+          0
+        ]
+      ],
+      "nodeId": 200119,
+      "doorNodeIds": [
+        200120,
+        200121
+      ],
+      "color": "#8583bd",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f2-male-cr",
+      "label": "Male Comfort Room",
+      "kind": "toilet",
+      "floor": 2,
+      "rect": [
+        -16,
+        -5.6,
+        -11.2,
+        -3.4
+      ],
+      "doors": [
+        [
+          -12.05,
+          -3.4
+        ]
+      ],
+      "nodeId": 200122,
+      "doorNodeIds": [
+        200123
+      ],
+      "color": "#c0def3",
+      "estimated": true
+    },
+    {
+      "id": "ynares-f2-female-cr",
+      "label": "Female Comfort Room",
+      "kind": "toilet",
+      "floor": 2,
+      "rect": [
+        11.2,
+        -5.6,
+        16,
+        -3.4
+      ],
+      "doors": [
+        [
+          12.05,
+          -3.4
+        ]
+      ],
+      "nodeId": 200125,
+      "doorNodeIds": [
+        200126
+      ],
+      "color": "#f2d3df",
+      "estimated": true
+    }
+  ]
+}

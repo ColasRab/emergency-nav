@@ -5,6 +5,7 @@ export default function HazardList({
   hazards,
   onAction,
   admin = false,
+  floorNames,
 }: {
   hazards: Hazard[];
   onAction: (
@@ -13,6 +14,7 @@ export default function HazardList({
     token?: string,
   ) => void;
   admin?: boolean;
+  floorNames?: Record<number, string>;
 }) {
   const [token, setToken] = useState("");
   return (
@@ -37,8 +39,9 @@ export default function HazardList({
       )}
       {hazards.map((h) => (
         <article className="hazard-item" key={h.id}>
-          <strong className="hazard-icon">⚠ {h.type}</strong> · Floor {h.floor}{" "}
-          · {h.severity === 3 ? "blocked" : "avoid"}
+          <strong className="hazard-icon">⚠ {h.type}</strong> ·{" "}
+          {floorNames?.[h.floor] ?? `Floor ${h.floor}`} ·{" "}
+          {h.severity === 3 ? "blocked" : "avoid"}
           <p className="status-line">
             {h.edge
               ? `Edge ${h.edge.join(" ↔ ")}`

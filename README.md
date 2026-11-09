@@ -2,6 +2,14 @@
 
 Indoor navigation for the Admin and Ynares buildings, with 3D scan previews, surveyed QR positioning, speech guidance and floor-scoped hazard routing.
 
+## Reconstructed rooms from the supplied floor plan
+
+The app now opens estimated room models for Admin and all three Ynares floors. Room cards and 3D labels reproduce the supplied plan; use **Original scan** for comparison, the floor selector for each level, and **Show all floors** for the full Ynares building. Rooms include illustrative furniture, doors, windows, corridors and the end stairwells shown in the plan. The original scans remain unchanged.
+
+Ynares uses the user's measured floor heights. Horizontal dimensions, Admin's height, doorway positions and the central entrance are explicitly estimated. Download a self-contained GLB or a complete OBJ/material/texture ZIP from **Dimensions and assumptions** below the room cards. Regenerate models and their preview graphs with `npm run models:rooms`; edit `scripts/room-layouts.json` to change the assumptions. Regeneration resets geographic placement and verification fields.
+
+See [the reconstruction report](reports/room-reconstruction.md) for room lists, dimension assumptions, exports and validation. The older scan graph is retained as `public/nav_graph.json`; the active app now uses the estimated room-model graphs in `public/graphs/`.
+
 **Current status:** the software is implemented and tested locally. The supplied scans and existing graph are **not surveyed deployment data**. Real floor elevations, measured scale, control points, actual exits and QR placements must be verified before using the app for physical guidance. Follow official evacuation signs and staff instructions.
 
 ## Run locally
@@ -25,7 +33,7 @@ The project now uses Next.js 16, React 19, TypeScript strict mode, Mapbox GL JS 
 
 Browser setup changes are drafts stored on that device. Export the reviewed files to `public/models/admin.json`, `public/models/ynares.json` and `public/models/anchors.json` for deployment. Keep the configuration IDs and graph paths building-specific.
 
-Admin's OBJ and PLY are alternate exports of the **Admin Building**. The larger OBJ in `C:/Users/colas/Documents/emergency-navigation` is **Ynares**. The Ynares material and texture were not supplied, so its preview uses an untextured surface. The existing three-floor app graph is retained as an **unverified Ynares preview**; Admin needs its own surveyed graph. No building coordinates, storeys, real exits or QR anchors have been invented.
+Admin's OBJ and PLY are alternate exports of the **Admin Building**. The larger OBJ in `C:/Users/colas/Documents/emergency-navigation` is **Ynares**. Its original material and texture were not supplied, so the scan-reference view is untextured. Reconstructed rooms use separate estimated geometry and their own colors/labels. Real building coordinates, exits and QR anchors still require a physical survey; the central entrance in the reconstructed preview is explicitly assumed.
 
 `lib/geo/transform.ts` contains runtime coordinate conversions. In a right-handed Y-up model, `rotationDeg = 0` maps model +Z to north and +X to west; a positive geographic rotation turns +Z clockwise from north. Graph-to-model rotation is documented in that module. Use the alignment preview to verify the fitted orientation.
 
