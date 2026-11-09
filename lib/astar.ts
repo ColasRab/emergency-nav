@@ -31,6 +31,7 @@ export type AstarResult = {
   path: number[] | null;
   cost: number;
 };
+export type CostModifier = (from:number,to:number,floor:number)=>number;
 
 class MinHeap<T> {
   private items: { priority: number; value: T }[] = [];
@@ -55,20 +56,16 @@ export function astar(
   graph: NavGraph,
   startId: number,
   goalIds: number[],
-  liveWeightMultipliers?: Record<string, number>
+  liveWeightMultipliers?: Record<string, number>,
+  costModifier?: CostModifier
 ): AstarResult {
-  const goals = new Set(goalIds);
-  if (goals.size === 0) return { path: null, cost: Infinity };
+  const goals = new Set(goalIds.filter(id=>graph.nodes[id]));
+  if (!graph.nodes[startId] || goals.size === 0) return { path: null, cost: Infinity };
 
   const heuristic = (nodeId: number) => {
-    const [x, z] = graph.nodes[nodeId];
-    let best = Infinity;
-    for (const g of goals) {
-      const [gx, gz] = graph.nodes[g];
-      const d = Math.hypot(x - gx, z - gz);
-      if (d < best) best = d;
-    }
-    return best;
+    // Imported graphs may have arbitrary weighted edges. A zero heuristic
+    // preserves optimality even when a supplied multiplier is below one.
+    return 0;
   };
 
   const open = new MinHeap<number>();
@@ -95,9 +92,10 @@ export function astar(
     }
 
     for (const [neighborId, baseWeight] of graph.edges[String(current)] ?? []) {
-      if (!isFinite(baseWeight)) continue;
+      if (!graph.nodes[neighborId] || !isFinite(baseWeight) || baseWeight < 0) continue;
       const key = `${current}->${neighborId}`;
-      const multiplier = liveWeightMultipliers?.[key] ?? 1.0;
+      const multiplier = (liveWeightMultipliers?.[key] ?? 1.0) * (costModifier?.(current,neighborId,graph.nodes[current][2]) ?? 1);
+      if (!Number.isFinite(multiplier) || multiplier < 0) continue;
       const weight = baseWeight * multiplier;
 
       const tentativeG = gScore.get(current)! + weight;
