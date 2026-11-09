@@ -2280,5 +2280,12 @@
     "The original scans are preserved as references. Their geometry is not registered to this reconstruction.",
     "Fence layout follows the user revision: fenced corridor ends on both buildings, unfenced ground-floor entrance projections, and continuous exposed-perimeter railings on Ynares floors 2 and 3."
   ],
-  "heightSource": "User-confirmed floor-to-floor heights, including slab thickness."
+  "heightSource": "User-confirmed floor-to-floor heights, including slab thickness.",
+  "layoutDimensions": {
+    "width": 32,
+    "roomDepth": 5.6,
+    "corridorDepth": 2,
+    "projectionWidth": 10.7,
+    "projectionDepth": 4.5
+  }
 }

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import sharp from "sharp";
 
 async function chooseMarsden(page: Page) {
   await page.route("**/api/hazards**", (route) =>
@@ -129,4 +130,169 @@ test("phone layout permits custom model points and rejects furniture collisions"
   await page
     .locator(".room-start-panel")
     .screenshot({ path: "reports/marsden-start-mobile.png" });
+});
+
+test("game-style camera view keeps the map and estimated place synchronized", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1320, height: 1000 });
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await chooseMarsden(page);
+  const view = page.getByRole("region", {
+      name: "Camera navigation view",
+      exact: true,
+    }),
+    map = view.getByRole("region", {
+      name: "Top-down navigation map",
+      exact: true,
+    }),
+    place = view.getByRole("region", {
+      name: "Estimated location",
+      exact: true,
+    });
+  await expect(place.getByTestId("estimated-place-name")).toHaveText("Marsden");
+  await expect(place.getByTestId("estimated-place-region")).toHaveText(
+    "Back right",
+  );
+  await expect(view.locator(".model-pose-preview canvas")).toBeVisible();
+  await expect(view.locator(".model-preview-status")).toHaveCount(0);
+  await view.scrollIntoViewIfNeeded();
+  await expect(view.locator(".model-pose-preview canvas")).toBeVisible();
+  await expect
+    .poll(async () => {
+      const data = await view
+        .locator(".model-pose-preview canvas")
+        .evaluate((element) => (element as HTMLCanvasElement).toDataURL());
+      const stats = await sharp(
+        Buffer.from(data.split(",")[1], "base64"),
+      ).stats();
+      return stats.channels.some((channel) => channel.stdev > 1);
+    })
+    .toBe(true);
+  const v = (await view.boundingBox())!,
+    m = (await map.boundingBox())!,
+    p = (await place.boundingBox())!;
+  expect(m.x + m.width).toBeLessThan(v.x + v.width / 2);
+  expect(m.y + m.height).toBeLessThan(v.y + v.height / 2);
+  expect(p.x).toBeGreaterThan(v.x + v.width / 2);
+  expect(p.y).toBeGreaterThan(v.y + v.height / 2);
+  await view.screenshot({ path: "reports/game-camera-desktop.png" });
+  await map
+    .getByRole("button", { name: "Show whole floor map", exact: true })
+    .click();
+  await expect(map.getByText("Ynares Building", { exact: true })).toBeVisible();
+  await map
+    .getByRole("button", { name: "Zoom map to current room", exact: true })
+    .click();
+  const before = await map
+      .getByTestId("minimap-user")
+      .getAttribute("transform"),
+    beforePlace = await place.innerText();
+  await place
+    .getByRole("button", { name: "Reached next point", exact: false })
+    .click();
+  await expect(map.getByTestId("minimap-user")).not.toHaveAttribute(
+    "transform",
+    before!,
+  );
+  await expect(place).not.toHaveText(beforePlace);
+  await view
+    .getByRole("button", { name: "Expand camera view", exact: true })
+    .click();
+  await expect(view).toHaveClass(/is-expanded/);
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe(
+    "hidden",
+  );
+  await page.keyboard.press("Escape");
+  await expect(view).not.toHaveClass(/is-expanded/);
+  expect(await page.evaluate(() => document.body.style.overflow)).not.toBe(
+    "hidden",
+  );
+  expect(errors).toEqual([]);
+});
+
+test("phone camera layout keeps both corners clear and supports a live camera overlay", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator.mediaDevices, "getUserMedia", {
+      configurable: true,
+      value: async () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 640;
+        canvas.height = 960;
+        const ctx = canvas.getContext("2d")!;
+        const gradient = ctx.createLinearGradient(0, 0, 0, 960);
+        gradient.addColorStop(0, "#566975");
+        gradient.addColorStop(1, "#283e37");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 640, 960);
+        ctx.fillStyle = "#d9e6df";
+        ctx.font = "24px sans-serif";
+        ctx.fillText("Synthetic test camera", 190, 450);
+        return canvas.captureStream(5);
+      },
+    });
+  });
+  await chooseMarsden(page);
+  const view = page.getByRole("region", {
+    name: "Camera navigation view",
+    exact: true,
+  });
+  await expect(view.locator(".model-pose-preview canvas")).toBeVisible();
+  await expect(view.locator(".model-preview-status")).toHaveCount(0);
+  const map = (await view.locator(".navigation-minimap").boundingBox())!,
+    actions = (await view.locator(".camera-hud-actions").boundingBox())!,
+    card = (await view.locator(".estimated-place-card").boundingBox())!,
+    maneuver = (await view.locator(".hud-maneuver").boundingBox())!;
+  expect(map.x + map.width).toBeLessThan(actions.x);
+  expect(maneuver.x + maneuver.width).toBeLessThan(card.x);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await view.screenshot({ path: "reports/game-camera-mobile.png" });
+  await view.getByRole("button", { name: "Use camera", exact: true }).click();
+  await expect(view.getByText("Live camera", { exact: true })).toBeVisible();
+  await expect(view.locator(".navigation-video")).toHaveClass(/is-live/);
+  await expect(view.locator(".model-pose-preview")).toHaveCount(0);
+  await page
+    .locator(".model-camera-setup")
+    .getByRole("button", { name: "Enable compass", exact: true })
+    .click();
+  await expect(
+    page.getByText(/Waiting for absolute compass/).first(),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    const event = new Event("deviceorientationabsolute");
+    Object.defineProperties(event, {
+      alpha: { value: 260 },
+      absolute: { value: true },
+    });
+    window.dispatchEvent(event);
+  });
+  await page
+    .getByRole("button", { name: "Set this facing direction", exact: true })
+    .click();
+  await expect(
+    view.getByRole("img", { name: "Estimated route over camera", exact: true }),
+  ).toBeVisible();
+  await expect(view.getByTestId("estimated-place-region")).toHaveText(
+    "Back right",
+  );
+  await view.screenshot({ path: "reports/game-camera-synthetic-live.png" });
+  const track = await view
+    .locator("video")
+    .evaluateHandle(
+      (video) =>
+        ((video as HTMLVideoElement).srcObject as MediaStream).getTracks()[0],
+    );
+  await view
+    .getByRole("button", { name: "Use model preview", exact: true })
+    .click();
+  expect(await track.evaluate((t) => t.readyState)).toBe("ended");
+  await expect(view.getByText("Model preview", { exact: true })).toBeVisible();
 });

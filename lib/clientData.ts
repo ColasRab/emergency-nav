@@ -53,6 +53,8 @@ export function useBuildingData(id: BuildingId) {
                     candidate.glb === base.glb
                       ? base.rooms
                       : candidate.rooms,
+                  layoutDimensions:
+                    base.layoutDimensions ?? candidate.layoutDimensions,
                 };
             }
           }

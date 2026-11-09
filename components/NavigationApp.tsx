@@ -517,9 +517,10 @@ export default function NavigationApp() {
       }
     return points;
   }, [anchors, floor, config, graph, store.hazards]);
-  const user: Vec3 | undefined = estimate
-    ? [...estimate.position, estimate.floor]
-    : undefined;
+  const user = useMemo<Vec3 | undefined>(
+    () => (estimate ? [...estimate.position, estimate.floor] : undefined),
+    [estimate],
+  );
   useEffect(() => setSelectedRoomId(undefined), [id, floor]);
   return (
     <main className="wide-main">
@@ -779,6 +780,16 @@ export default function NavigationApp() {
                   modelAligned={modelHeadingOffset !== null}
                   onAlignModel={alignModel}
                   onVideoReady={setVideo}
+                  onConfirmWaypoint={
+                    modelRoute && waypointId !== undefined && !result?.fallback
+                      ? confirmWaypoint
+                      : undefined
+                  }
+                  nextWaypointLabel={
+                    waypointId !== undefined && routeGraph
+                      ? routeGraph.zones[waypointId]?.label
+                      : undefined
+                  }
                 />
               )}
               {modelRoute && result?.path && (

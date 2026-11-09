@@ -1,13 +1,24 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import type { NavGraph } from "@/lib/astar";
 import type { BuildingConfig } from "@/lib/buildings";
 import { normalizeSignedDegrees } from "@/lib/geo/transform";
+import {
+  describeModelPlace,
+  modelRouteSegments,
+  projectModelRoute,
+} from "@/lib/navigation/modelView";
+import NavigationMiniMap from "./navigation/NavigationMiniMap";
 import {
   instructionText,
   nextInstruction,
   type NextInstruction,
 } from "@/lib/voice/instructionBuilder";
+const ModelPosePreview = dynamic(
+  () => import("./navigation/ModelPosePreview"),
+  { ssr: false },
+);
 
 export default function CameraNavigation({
   graph,
@@ -24,6 +35,8 @@ export default function CameraNavigation({
   modelAligned = false,
   onAlignModel,
   onVideoReady,
+  onConfirmWaypoint,
+  nextWaypointLabel,
 }: {
   graph: NavGraph;
   path: number[] | null;
@@ -39,30 +52,65 @@ export default function CameraNavigation({
   modelAligned?: boolean;
   onAlignModel?: (facing: number) => void;
   onVideoReady?: (video: HTMLVideoElement | null) => void;
+  onConfirmWaypoint?: () => void;
+  nextWaypointLabel?: string;
 }) {
   const video = useRef<HTMLVideoElement>(null),
     stream = useRef<MediaStream | null>(null),
     alive = useRef(true),
+    viewport = useRef<HTMLDivElement>(null),
+    cameraRequest = useRef(0),
     callbacks = useRef({ onVideoReady });
   callbacks.current = { onVideoReady };
   const [cameraStatus, setCameraStatus] = useState("Camera is off"),
-    [facing, setFacing] = useState(180);
+    [facing, setFacing] = useState(180),
+    [live, setLive] = useState(false),
+    [pendingCamera, setPendingCamera] = useState(false),
+    [expanded, setExpanded] = useState(false),
+    [viewportSize, setViewportSize] = useState({ width: 1000, height: 600 });
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
+      cameraRequest.current++;
       stream.current?.getTracks().forEach((t) => t.stop());
       callbacks.current.onVideoReady?.(null);
     };
   }, []);
+  useEffect(() => {
+    if (!viewport.current) return;
+    const resize = new ResizeObserver(([entry]) =>
+      setViewportSize({
+        width: entry.contentRect.width,
+        height: entry.contentRect.height,
+      }),
+    );
+    resize.observe(viewport.current);
+    return () => resize.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!expanded) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExpanded(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", close);
+    };
+  }, [expanded]);
   async function startCamera() {
+    const request = ++cameraRequest.current;
+    setPendingCamera(true);
     try {
       stream.current?.getTracks().forEach((t) => t.stop());
       const next = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: "environment" } },
         audio: false,
       });
-      if (!alive.current) {
+      if (!alive.current || cameraRequest.current !== request) {
         next.getTracks().forEach((t) => t.stop());
         return;
       }
@@ -73,13 +121,30 @@ export default function CameraNavigation({
         callbacks.current.onVideoReady?.(video.current);
       }
       setCameraStatus("Camera ready");
+      setLive(true);
     } catch (e) {
+      if (!alive.current || cameraRequest.current !== request) return;
+      setLive(false);
+      stream.current?.getTracks().forEach((track) => track.stop());
+      callbacks.current.onVideoReady?.(null);
       setCameraStatus(
         e instanceof Error
           ? e.message
           : "Camera unavailable. Follow the text route.",
       );
+    } finally {
+      if (alive.current && cameraRequest.current === request)
+        setPendingCamera(false);
     }
+  }
+  function stopCamera() {
+    cameraRequest.current++;
+    stream.current?.getTracks().forEach((track) => track.stop());
+    if (video.current) video.current.srcObject = null;
+    callbacks.current.onVideoReady?.(null);
+    setPendingCamera(false);
+    setLive(false);
+    setCameraStatus("Model preview active");
   }
   const target = useMemo(
     () =>
@@ -114,8 +179,55 @@ export default function CameraNavigation({
     (!modelBased || modelAligned)
       ? normalizeSignedDegrees(target.bearing - compassHeading - headingOffset)
       : null;
+  const place = useMemo(
+    () => describeModelPlace(config, graphPosition, currentFloor, graph),
+    [config, graphPosition, currentFloor, graph],
+  );
+  const modelHeading =
+    compassHeading !== null && (!modelBased || modelAligned)
+      ? modelBased
+        ? compassHeading + headingOffset
+        : config.georef
+          ? compassHeading + headingOffset - config.georef.rotationDeg + 180
+          : facing
+      : facing;
+  const projectedRoute = useMemo(
+    () =>
+      live && angle !== null && place.position
+        ? projectModelRoute(
+            modelRouteSegments(
+              config,
+              graph,
+              path?.slice(0, Math.max(2, (target?.pathIndex ?? 1) + 1)) ?? null,
+              currentFloor,
+            ),
+            place.position,
+            modelHeading,
+            viewportSize.width / viewportSize.height,
+          )
+        : [],
+    [
+      live,
+      angle,
+      place.position,
+      config,
+      graph,
+      path,
+      currentFloor,
+      modelHeading,
+      target?.pathIndex,
+      viewportSize,
+    ],
+  );
   return (
-    <section className="recognizer-panel">
+    <section className="recognizer-panel camera-guide-panel">
+      <div className="camera-guide-heading">
+        <div>
+          <p className="eyebrow">Navigate from the model</p>
+          <h2>Camera navigation</h2>
+        </div>
+        <span className="estimate-badge">Estimated position</span>
+      </div>
       {modelBased && (
         <div className="model-camera-setup">
           <h2>Face a direction in the model</h2>
@@ -162,13 +274,94 @@ export default function CameraNavigation({
           </p>
         </div>
       )}
-      <div className="camera-navigation">
+      <div
+        ref={viewport}
+        id="navigation-camera-view"
+        className={`camera-navigation game-navigation-view ${expanded ? "is-expanded" : ""}`}
+        role="region"
+        aria-label="Camera navigation view"
+      >
+        {!live && (
+          <ModelPosePreview
+            config={config}
+            graph={graph}
+            path={path}
+            floor={currentFloor}
+            position={place.position}
+            heading={modelHeading}
+          />
+        )}
         <video
           ref={video}
-          className="camera-preview navigation-video"
+          className={`camera-preview navigation-video ${live ? "is-live" : ""}`}
           muted
           playsInline
         />
+        <div className="camera-hud-vignette" aria-hidden="true" />
+        {projectedRoute.length > 0 && (
+          <svg
+            className="estimated-route-overlay"
+            viewBox="0 0 1000 1000"
+            preserveAspectRatio="none"
+            role="img"
+            aria-label="Estimated route over camera"
+          >
+            {projectedRoute.map(([a, b], i) => (
+              <g key={i}>
+                <line
+                  x1={a[0]}
+                  y1={a[1]}
+                  x2={b[0]}
+                  y2={b[1]}
+                  stroke="#092c20"
+                  strokeWidth="18"
+                  strokeLinecap="round"
+                />
+                <line
+                  x1={a[0]}
+                  y1={a[1]}
+                  x2={b[0]}
+                  y2={b[1]}
+                  stroke="#7dffc1"
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray="18 10"
+                />
+              </g>
+            ))}
+          </svg>
+        )}
+        <NavigationMiniMap
+          config={config}
+          graph={graph}
+          path={path}
+          floor={currentFloor}
+          place={place}
+          heading={modelHeading}
+        />
+        <div className="camera-hud-actions">
+          <span className={`camera-mode-badge ${live ? "live" : ""}`}>
+            <i />
+            {live ? "Live camera" : "Model preview"}
+          </span>
+          <button className="hud-action" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? "Close expanded camera" : "Expand camera view"}
+          </button>
+          <button
+            className="hud-action"
+            disabled={pendingCamera}
+            onClick={live ? stopCamera : startCamera}
+          >
+            {pendingCamera
+              ? "Opening camera…"
+              : live
+                ? "Use model preview"
+                : "Use camera"}
+          </button>
+        </div>
+        <div className="camera-crosshair" aria-hidden="true">
+          <i />
+        </div>
         {angle !== null && (
           <div
             className="navigation-arrow"
@@ -180,14 +373,59 @@ export default function CameraNavigation({
             </svg>
           </div>
         )}
-        <div className="navigation-instruction">
-          {target
-            ? instructionText(target, "en", config)
-            : "Choose your current location to preview a route."}
+        <div className="navigation-instruction hud-maneuver">
+          <span className="hud-eyebrow">
+            {live ? "Estimated route overlay" : "Model route preview"}
+          </span>
+          <strong>
+            {target
+              ? instructionText(target, "en", config)
+              : "Choose your current location to preview a route."}
+          </strong>
+          <small>
+            {angle === null
+              ? "Set facing direction for the camera arrow"
+              : "Follow the next modeled waypoint"}
+          </small>
         </div>
+        <section
+          className="estimated-place-card"
+          aria-label="Estimated location"
+        >
+          <span className="hud-eyebrow">
+            <i /> Estimated location
+          </span>
+          <strong data-testid="estimated-place-name">{place.title}</strong>
+          <span
+            className="estimated-place-region"
+            data-testid="estimated-place-region"
+          >
+            {place.region}
+          </span>
+          <span className="estimated-place-floor">
+            {place.floor} · {config.name}
+          </span>
+          {place.distances && <small>{place.distances}</small>}
+          <div className="estimated-place-basis">
+            {modelBased
+              ? "From selected model point"
+              : "From last location update"}
+          </div>
+          {onConfirmWaypoint && (
+            <button
+              className="hud-confirm"
+              onClick={onConfirmWaypoint}
+              title={nextWaypointLabel}
+            >
+              Reached next point <span aria-hidden="true">→</span>
+            </button>
+          )}
+        </section>
       </div>
       <div className="button-row">
-        <button onClick={startCamera}>Start navigation camera</button>
+        <button onClick={startCamera} disabled={pendingCamera}>
+          Start navigation camera
+        </button>
         {!modelBased && (
           <button onClick={() => void onEnableCompass()}>Enable compass</button>
         )}
@@ -197,6 +435,11 @@ export default function CameraNavigation({
         {compassHeading === null
           ? " · Direction arrow waiting for a fresh compass reading"
           : ""}
+      </p>
+      <p className="status-line">
+        The location label is calculated from your point in the model. The
+        camera does not recognize your room or track your walking position.
+        Confirm waypoints to move the estimate.
       </p>
       {!config.georef && !modelBased && (
         <p className="status-warning">

@@ -123,12 +123,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 10018,
+                  "duration": 12873,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T09:55:00.661Z",
+                  "startTime": "2026-11-09T14:16:23.691Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -138,7 +138,7 @@
           ],
           "id": "01b936732ce314d10a62-a41bba90f2f5a6efd795",
           "file": "model-start.spec.ts",
-          "line": 23,
+          "line": 24,
           "column": 1
         },
         {
@@ -157,12 +157,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1612,
+                  "duration": 2014,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T09:55:10.997Z",
+                  "startTime": "2026-11-09T14:16:36.970Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -172,7 +172,75 @@
           ],
           "id": "01b936732ce314d10a62-752c2f7114254aefcdb6",
           "file": "model-start.spec.ts",
-          "line": 99,
+          "line": 100,
+          "column": 1
+        },
+        {
+          "title": "game-style camera view keeps the map and estimated place synchronized",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3481,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-09T14:16:39.003Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "01b936732ce314d10a62-afbe6a5248eaa989966a",
+          "file": "model-start.spec.ts",
+          "line": 135,
+          "column": 1
+        },
+        {
+          "title": "phone camera layout keeps both corners clear and supports a live camera overlay",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3182,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-09T14:16:42.508Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "01b936732ce314d10a62-3d74d3808c9923df1c14",
+          "file": "model-start.spec.ts",
+          "line": 215,
           "column": 1
         }
       ]
@@ -199,12 +267,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2475,
+                  "duration": 2459,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T09:55:12.646Z",
+                  "startTime": "2026-11-09T14:16:45.742Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -233,12 +301,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 5704,
+                  "duration": 5555,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T09:55:15.136Z",
+                  "startTime": "2026-11-09T14:16:48.222Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -267,12 +335,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 729,
+                  "duration": 753,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T09:55:20.874Z",
+                  "startTime": "2026-11-09T14:16:53.795Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -301,12 +369,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1951,
+                  "duration": 2170,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T09:55:21.617Z",
+                  "startTime": "2026-11-09T14:16:54.566Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -335,12 +403,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 188,
+                  "duration": 211,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T09:55:23.580Z",
+                  "startTime": "2026-11-09T14:16:56.768Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -369,12 +437,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 7523,
+                  "duration": 7397,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T09:55:23.778Z",
+                  "startTime": "2026-11-09T14:16:56.989Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -403,12 +471,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 6097,
+                  "duration": 6093,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-09T09:55:31.311Z",
+                  "startTime": "2026-11-09T14:17:04.397Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -426,9 +494,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-11-09T09:54:58.106Z",
-    "duration": 39937.96000000001,
-    "expected": 9,
+    "startTime": "2026-11-09T14:16:20.845Z",
+    "duration": 50193.995,
+    "expected": 11,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

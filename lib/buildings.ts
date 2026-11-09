@@ -44,6 +44,15 @@ export const buildingSchema = z.object({
   scanGlb: z.string().optional(),
   planImage: z.string().optional(),
   rooms: z.array(roomSchema).optional(),
+  layoutDimensions: z
+    .object({
+      width: z.number().positive(),
+      roomDepth: z.number().positive(),
+      corridorDepth: z.number().positive(),
+      projectionWidth: z.number().positive(),
+      projectionDepth: z.number().positive(),
+    })
+    .optional(),
   assumptions: z.array(z.string()).optional(),
   modelVerified: z.boolean(),
   graphVerified: z.boolean(),

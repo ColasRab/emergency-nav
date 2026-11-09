@@ -1037,6 +1037,7 @@ for (const spec of manifest.buildings) {
   config.modelRevision = manifest.revision;
   config.planImage = manifest.sourcePlan;
   config.rooms = rooms;
+  config.layoutDimensions = metadata.dimensions;
   config.assumptions = manifest.assumptions;
   config.floors = floors;
   config.modelVerified = false;
