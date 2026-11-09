@@ -20,19 +20,28 @@ const MIN_STAIRS_DURATION_MS = 4000; // require a sustained bout, not a blip
 export default function PassiveStairProgress({
   expectingStairSegment,
   onStairSegmentConfirmed,
+  onStep,
+  stepThreshold=1.2,
 }: {
   expectingStairSegment: boolean; // true when the current A* step IS a stair connector
   onStairSegmentConfirmed: () => void;
+  onStep?: () => void;
+  stepThreshold?: number;
 }) {
   const [state, setState] = useState<MotionState>("stationary");
   const [permissionGranted, setPermissionGranted] = useState(false);
   const detectorRef = useRef<StairMotionDetector | null>(null);
   const firedRef = useRef(false);
+  const callbackRef = useRef(onStairSegmentConfirmed);
+  const stepRef = useRef(onStep);
+  const [error,setError] = useState("");
+  callbackRef.current=onStairSegmentConfirmed;
+  stepRef.current=onStep;
 
   useEffect(() => {
-    detectorRef.current = new StairMotionDetector((newState) => setState(newState));
+    detectorRef.current = new StairMotionDetector((newState) => setState(newState),()=>stepRef.current?.(),stepThreshold);
     return () => detectorRef.current?.stop();
-  }, []);
+  }, [stepThreshold]);
 
   // Poll stairs duration and fire once a sustained bout is confirmed,
   // but only while the current plan step actually expects a stair segment
@@ -47,19 +56,20 @@ export default function PassiveStairProgress({
       const duration = detectorRef.current?.stairsDurationMs ?? 0;
       if (!firedRef.current && duration >= MIN_STAIRS_DURATION_MS) {
         firedRef.current = true;
-        onStairSegmentConfirmed();
+        callbackRef.current();
       }
     }, 300);
     return () => clearInterval(interval);
-  }, [expectingStairSegment, onStairSegmentConfirmed]);
+  }, [expectingStairSegment]);
 
   async function enableMotionTracking() {
-    await detectorRef.current?.requestPermissionAndStart();
-    setPermissionGranted(true);
+    try { await detectorRef.current?.requestPermissionAndStart(); setPermissionGranted(true); setError(""); }
+    catch (e) { setError(e instanceof Error?e.message:"Motion permission unavailable. Choose a floor manually."); }
   }
 
   return (
     <div className="recognizer-panel">
+      {error&&<p role="alert" className="status-warning">{error}</p>}
       {!permissionGranted ? (
         <button onClick={enableMotionTracking}>Enable passive motion tracking</button>
       ) : (

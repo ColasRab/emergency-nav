@@ -6,6 +6,6 @@ export function stablePose(samples:PoseSample[],agreeM:number,agreeDeg:number):P
  const median=(a:number[])=>a.sort((x,y)=>x-y)[1],base=frames[0].yaw;
  return {...frames[2],position:[median(frames.map(f=>f.position[0])),median(frames.map(f=>f.position[1]))],yaw:normalizeSignedDegrees(base+median(frames.map(f=>normalizeSignedDegrees(f.yaw-base))))};
 }
-export function plausibleJump(previous:PoseSample|null,next:PoseSample,maxSpeedMS:number):boolean{
- if(!previous)return true;const distance=Math.hypot(...[next.position[0]-previous.position[0],next.position[1]-previous.position[1]]);return distance<=maxSpeedMS*Math.max(0,next.timestamp-previous.timestamp)/1000+previous.uncertaintyM+next.uncertaintyM;
+export function plausibleJump(previous:PoseSample|null,next:PoseSample,maxSpeedMS:number,metersPerGraphUnit=1):boolean{
+ if(!previous)return true;const distance=Math.hypot(next.position[0]-previous.position[0],next.position[1]-previous.position[1])*metersPerGraphUnit;return distance<=maxSpeedMS*Math.max(0,next.timestamp-previous.timestamp)/1000+previous.uncertaintyM+next.uncertaintyM;
 }

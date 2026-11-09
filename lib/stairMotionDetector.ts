@@ -30,6 +30,7 @@
  */
 
 export type MotionState = "flat" | "stairs" | "stationary";
+import {StepDetector} from "./position/fusion";
 
 const WINDOW_MS = 2500; // how much recent motion history to analyze
 const STATIONARY_THRESHOLD = 0.15; // m/s^2 variance below this = not moving
@@ -43,23 +44,26 @@ export class StairMotionDetector {
   private onStateChange: (state: MotionState) => void;
   private currentState: MotionState = "stationary";
   private listening = false;
+  private stepDetector: StepDetector;
 
   // tracks how long we've continuously been in "stairs" state, so the
   // app can decide "this looks like a full flight, advance floor" once
   // it's been sustained rather than a single noisy blip
   private stairsStateStartedAt: number | null = null;
 
-  constructor(onStateChange: (state: MotionState) => void) {
+  constructor(onStateChange: (state: MotionState) => void, private onStep?: () => void, stepThreshold=1.2) {
     this.onStateChange = onStateChange;
+    this.stepDetector = new StepDetector(stepThreshold);
   }
 
   async requestPermissionAndStart() {
     // iOS requires an explicit user gesture (e.g. a button tap) to grant
     // motion permission -- this should be called from a button's onClick,
     // but only needs to happen ONCE per session, not per stairwell.
-    const anyWindow = window as any;
-    if (typeof anyWindow.DeviceMotionEvent?.requestPermission === "function") {
-      const result = await anyWindow.DeviceMotionEvent.requestPermission();
+    if (typeof DeviceMotionEvent === "undefined") throw new Error("Motion tracking is unavailable. Use QR scans or choose a location manually.");
+    const motionApi = DeviceMotionEvent as typeof DeviceMotionEvent & {requestPermission?:()=>Promise<string>};
+    if (typeof motionApi.requestPermission === "function") {
+      const result = await motionApi.requestPermission();
       if (result !== "granted") {
         throw new Error("Motion permission denied");
       }
@@ -80,13 +84,14 @@ export class StairMotionDetector {
 
   private handleMotion = (event: DeviceMotionEvent) => {
     const accel = event.accelerationIncludingGravity;
-    if (!accel || accel.z === null) return;
+    if (!accel || accel.x === null || accel.y === null || accel.z === null) return;
 
     const now = Date.now();
-    // z-axis is roughly vertical when the phone is held upright/in a
-    // pocket in typical orientation -- good enough for this heuristic
-    // without full sensor-fusion orientation correction.
-    this.samples.push({ t: now, verticalAccel: accel.z });
+    const magnitude = Math.hypot(accel.x,accel.y,accel.z);
+    if (this.stepDetector.sample(magnitude,now)) this.onStep?.();
+    // Orientation-independent magnitude is still a heuristic; a QR is
+    // required after a planned floor transition before trusting position.
+    this.samples.push({ t: now, verticalAccel: magnitude });
     this.samples = this.samples.filter((s) => now - s.t <= WINDOW_MS);
 
     if (this.samples.length < MIN_SAMPLES) return;
