@@ -39,6 +39,14 @@ Open [the app](http://localhost:3000). A production build uses `npm run build` f
 
 The project now uses Next.js 16, React 19, TypeScript strict mode, Mapbox GL JS 3 and three.js. The framework and test dependencies were updated after the original versions failed the dependency audit.
 
+## Deploy to Vercel
+
+Import `ColasRab/emergency-nav` into Vercel with the repository root (`./`) and production branch `master`. The project specifies Node.js 24, uses `package-lock.json`, and configures `npm ci` followed by `npm run build` in `vercel.json`. The obsolete pnpm lockfile was removed so the deployment uses the tested dependency set.
+
+Add the environment variables listed in `.env.example` to the Vercel project, using your values from the local `.env.local`: `NEXT_PUBLIC_MAPBOX_TOKEN`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `HAZARD_ADMIN_TOKEN`. Set them for Production and Preview if both should use shared hazards. The last two are server secrets. Keep their existing names and keep `.env.local` out of GitHub. Redeploy after changing environment values, since public values are embedded during the build.
+
+The existing Supabase schema must be initialized using `supabase/migrations/001_hazards.sql`. This has already been done for the supplied project. Missing server settings leave shared hazards unavailable; the model preview remains usable. Camera and compass permissions require the deployed HTTPS site and still need actual phone validation.
+
 ## Building setup
 
 - `/admin/alignment`: inspect scans, fit at least three non-collinear ground control points, fit graph/model correspondences, edit measured floor data, and export building configuration.
