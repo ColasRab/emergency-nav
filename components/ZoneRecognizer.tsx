@@ -24,11 +24,14 @@ export default function ZoneRecognizer({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
-  const [status, setStatus] = useState<"idle" | "scanning" | "not_found">("idle");
+  const [status, setStatus] = useState<"idle" | "scanning" | "not_found">(
+    "idle",
+  );
   const [lastText, setLastText] = useState("");
 
   useEffect(() => {
-    return () => cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    return () =>
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
 
   async function startCamera() {
@@ -48,7 +51,14 @@ export default function ZoneRecognizer({
   }
 
   async function captureAndRecognize() {
-    if (!videoRef.current || videoRef.current.readyState < 2 || !videoRef.current.videoWidth) { setStatus("not_found"); return; }
+    if (
+      !videoRef.current ||
+      videoRef.current.readyState < 2 ||
+      !videoRef.current.videoWidth
+    ) {
+      setStatus("not_found");
+      return;
+    }
     setStatus("scanning");
 
     const canvas = document.createElement("canvas");
@@ -58,17 +68,19 @@ export default function ZoneRecognizer({
     ctx?.drawImage(videoRef.current, 0, 0);
 
     try {
-    const { data } = await Tesseract.recognize(canvas, "eng");
-    setLastText(data.text);
+      const { data } = await Tesseract.recognize(canvas, "eng");
+      setLastText(data.text);
 
-    const match = matchZone(graph, data.text, currentFloor);
-    if (match) {
-      onZoneFound(match.nodeId, match.label);
-      setStatus("idle");
-    } else {
+      const match = matchZone(graph, data.text, currentFloor);
+      if (match) {
+        onZoneFound(match.nodeId, match.label);
+        setStatus("idle");
+      } else {
+        setStatus("not_found");
+      }
+    } catch {
       setStatus("not_found");
     }
-    } catch { setStatus("not_found"); }
   }
 
   return (
@@ -82,8 +94,9 @@ export default function ZoneRecognizer({
       </div>
       {status === "not_found" && (
         <p className="status-warning">
-          Couldn&apos;t match that sign to a known zone. Try getting closer, or use
-          a surveyed QR sticker instead. Last read: &ldquo;{lastText.slice(0, 80)}&rdquo;
+          Couldn&apos;t match that sign to a known zone. Try getting closer, or
+          use a surveyed QR sticker instead. Last read: &ldquo;
+          {lastText.slice(0, 80)}&rdquo;
         </p>
       )}
     </div>

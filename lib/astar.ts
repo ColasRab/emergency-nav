@@ -31,7 +31,7 @@ export type AstarResult = {
   path: number[] | null;
   cost: number;
 };
-export type CostModifier = (from:number,to:number,floor:number)=>number;
+export type CostModifier = (from: number, to: number, floor: number) => number;
 
 class MinHeap<T> {
   private items: { priority: number; value: T }[] = [];
@@ -57,10 +57,11 @@ export function astar(
   startId: number,
   goalIds: number[],
   liveWeightMultipliers?: Record<string, number>,
-  costModifier?: CostModifier
+  costModifier?: CostModifier,
 ): AstarResult {
-  const goals = new Set(goalIds.filter(id=>graph.nodes[id]));
-  if (!graph.nodes[startId] || goals.size === 0) return { path: null, cost: Infinity };
+  const goals = new Set(goalIds.filter((id) => graph.nodes[id]));
+  if (!graph.nodes[startId] || goals.size === 0)
+    return { path: null, cost: Infinity };
 
   const heuristic = (nodeId: number) => {
     // Imported graphs may have arbitrary weighted edges. A zero heuristic
@@ -92,9 +93,12 @@ export function astar(
     }
 
     for (const [neighborId, baseWeight] of graph.edges[String(current)] ?? []) {
-      if (!graph.nodes[neighborId] || !isFinite(baseWeight) || baseWeight < 0) continue;
+      if (!graph.nodes[neighborId] || !isFinite(baseWeight) || baseWeight < 0)
+        continue;
       const key = `${current}->${neighborId}`;
-      const multiplier = (liveWeightMultipliers?.[key] ?? 1.0) * (costModifier?.(current,neighborId,graph.nodes[current][2]) ?? 1);
+      const multiplier =
+        (liveWeightMultipliers?.[key] ?? 1.0) *
+        (costModifier?.(current, neighborId, graph.nodes[current][2]) ?? 1);
       if (!Number.isFinite(multiplier) || multiplier < 0) continue;
       const weight = baseWeight * multiplier;
 
@@ -125,7 +129,7 @@ export function nearestNodeOnFloor(
   graph: NavGraph,
   x: number,
   z: number,
-  floor: number
+  floor: number,
 ): number {
   let best = { id: -1, dist: Infinity };
   for (const [idStr, [nx, nz, nodeFloor]] of Object.entries(graph.nodes)) {
@@ -139,7 +143,11 @@ export function nearestNodeOnFloor(
 }
 
 /** Nearest node tagged with a given zone type (stairs/hallway/room), relative to a reference node. */
-export function nearestNodeOfType(graph: NavGraph, refNodeId: number, zoneType: string): number | null {
+export function nearestNodeOfType(
+  graph: NavGraph,
+  refNodeId: number,
+  zoneType: string,
+): number | null {
   const [rx, rz] = graph.nodes[refNodeId];
   let best: { id: number; dist: number } | null = null;
   for (const [idStr, tag] of Object.entries(graph.zones)) {

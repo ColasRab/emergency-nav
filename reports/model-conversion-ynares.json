@@ -2,9 +2,9 @@
   {
     "id": "ynares",
     "originalTriangles": 1971338,
-    "triangles": 279925,
-    "bytes": 4505296,
-    "conversionSeconds": 12.5359455,
+    "triangles": 99949,
+    "bytes": 426548,
+    "conversionSeconds": 11.948983,
     "verified": false,
     "withinBudget": true
   }

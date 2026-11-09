@@ -1,5 +1,7 @@
 # Indoor navigation inspection — 9 November 2026
 
+Follow-up confirmations: the user identified the Admin OBJ/PLY pair and the separate Ynares OBJ, provided a Mapbox token, and chose Next.js API routes with Supabase. Supabase setup was applied and its table/subscription were verified. The initial observations below are preserved as the inspection record; see `final-implementation-report.md` for current status.
+
 ## Assets inspected before conversion
 
 | Source | Size | Vertices | Triangles | Raw XYZ extent | Texture |

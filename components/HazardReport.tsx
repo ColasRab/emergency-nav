@@ -1,15 +1,160 @@
 "use client";
-import {useEffect,useMemo,useState} from "react";
-import type {BuildingConfig} from "@/lib/buildings";
-import type {NavGraph} from "@/lib/astar";
-import type {Vec2} from "@/lib/geo/transform";
-import {hazardTypes,type Hazard,type HazardType} from "@/lib/hazards/model";
-import {localizeHazard} from "@/lib/hazards/localize";
-export default function HazardReport({graph,config,position,floor,heading,onCreate,admin=false}:{graph:NavGraph;config:BuildingConfig;position:Vec2;floor:number;heading:number|null;onCreate:(hazard:Hazard,confirmed?:boolean,adminToken?:string)=>void;admin?:boolean}){
- const [type,setType]=useState<HazardType>("blocked"),[severity,setSeverity]=useState<1|2|3>(2),[node,setNode]=useState("suggested"),[token,setToken]=useState(""),[persistent,setPersistent]=useState(false),[status,setStatus]=useState("");
- const suggested=useMemo(()=>localizeHazard(graph,position,floor,heading,config),[graph,position,floor,heading,config]);
- useEffect(()=>setNode("suggested"),[floor]);
- const nearby=Object.entries(graph.nodes).filter(([,n])=>n[2]===floor).sort(([,a],[,b])=>Math.hypot(a[0]-position[0],a[1]-position[1])-Math.hypot(b[0]-position[0],b[1]-position[1])).slice(0,20);
- function report(){const scope=node==="suggested"?suggested:{nodeIds:[Number(node)]};if(!scope.nodeIds.length){setStatus("Choose a valid location first.");return;}if(persistent&&token.length<24){setStatus("Enter the configured admin access token to create a persistent hazard.");return;}const now=Date.now();onCreate({id:crypto.randomUUID(),buildingId:config.id,floor,...scope,type,severity,confidence:1,source:persistent?"admin":"user",confirmations:1,dismissals:0,createdAt:now,expiresAt:persistent?Number.MAX_SAFE_INTEGER:now+(type==="crowd"?config.settings.crowd.ttlMs:config.settings.hazards.ttlMs)},true,persistent?token:undefined);setStatus("Report added. Check the shared connection status to confirm sync.");}
- return <details className="status-card"><summary>Report hazard</summary><p>Confirm a hazard you can observe. Choose its location on Floor {floor}. No camera images are uploaded.</p><label>Hazard type<select value={type} onChange={e=>setType(e.target.value as HazardType)}>{hazardTypes.map(t=><option key={t} value={t}>{t}</option>)}</select></label><label>Severity<select value={severity} onChange={e=>setSeverity(Number(e.target.value) as 1|2|3)}><option value={1}>Slow down</option><option value={2}>Avoid if possible</option><option value={3}>Blocked</option></select></label><label>Affected location<select value={node} onChange={e=>setNode(e.target.value)}><option value="suggested">Suggested {suggested.edge?`edge ${suggested.edge.join(" ↔ ")}`:`node ${suggested.nodeIds[0]??"unavailable"}`} · Floor {floor}</option>{nearby.map(([id])=><option key={id} value={id}>{graph.zones[id]?.label??`Nearby point ${id}`} · Floor {floor}</option>)}</select></label>{admin&&<><label className="inline-check"><input type="checkbox" checked={persistent} onChange={e=>setPersistent(e.target.checked)}/>Persistent admin hazard</label>{persistent&&<label>Admin access token<input type="password" autoComplete="off" value={token} onChange={e=>setToken(e.target.value)}/></label>}</>}<button onClick={report}>Confirm and report</button><p role="status">{status}</p></details>;
+import { useEffect, useMemo, useState } from "react";
+import type { BuildingConfig } from "@/lib/buildings";
+import type { NavGraph } from "@/lib/astar";
+import type { Vec2 } from "@/lib/geo/transform";
+import { hazardTypes, type Hazard, type HazardType } from "@/lib/hazards/model";
+import { localizeHazard } from "@/lib/hazards/localize";
+export default function HazardReport({
+  graph,
+  config,
+  position,
+  floor,
+  heading,
+  onCreate,
+  admin = false,
+}: {
+  graph: NavGraph;
+  config: BuildingConfig;
+  position: Vec2;
+  floor: number;
+  heading: number | null;
+  onCreate: (hazard: Hazard, confirmed?: boolean, adminToken?: string) => void;
+  admin?: boolean;
+}) {
+  const [type, setType] = useState<HazardType>("blocked"),
+    [severity, setSeverity] = useState<1 | 2 | 3>(2),
+    [node, setNode] = useState("suggested"),
+    [token, setToken] = useState(""),
+    [persistent, setPersistent] = useState(false),
+    [status, setStatus] = useState("");
+  const suggested = useMemo(
+    () => localizeHazard(graph, position, floor, heading, config),
+    [graph, position, floor, heading, config],
+  );
+  useEffect(() => setNode("suggested"), [floor]);
+  const nearby = Object.entries(graph.nodes)
+    .filter(([, n]) => n[2] === floor)
+    .sort(
+      ([, a], [, b]) =>
+        Math.hypot(a[0] - position[0], a[1] - position[1]) -
+        Math.hypot(b[0] - position[0], b[1] - position[1]),
+    )
+    .slice(0, 20);
+  function report() {
+    const scope =
+      node === "suggested" ? suggested : { nodeIds: [Number(node)] };
+    if (!scope.nodeIds.length) {
+      setStatus("Choose a valid location first.");
+      return;
+    }
+    if (persistent && token.length < 24) {
+      setStatus(
+        "Enter the configured admin access token to create a persistent hazard.",
+      );
+      return;
+    }
+    const now = Date.now();
+    onCreate(
+      {
+        id: crypto.randomUUID(),
+        buildingId: config.id,
+        floor,
+        ...scope,
+        type,
+        severity,
+        confidence: 1,
+        source: persistent ? "admin" : "user",
+        confirmations: 1,
+        dismissals: 0,
+        createdAt: now,
+        expiresAt: persistent
+          ? Number.MAX_SAFE_INTEGER
+          : now +
+            (type === "crowd"
+              ? config.settings.crowd.ttlMs
+              : config.settings.hazards.ttlMs),
+      },
+      true,
+      persistent ? token : undefined,
+    );
+    setStatus(
+      "Report added. Check the shared connection status to confirm sync.",
+    );
+  }
+  return (
+    <details className="status-card">
+      <summary>Report hazard</summary>
+      <p>
+        Confirm a hazard you can observe. Choose its location on Floor {floor}.
+        No camera images are uploaded.
+      </p>
+      <label>
+        Hazard type
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as HazardType)}
+        >
+          {hazardTypes.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Severity
+        <select
+          value={severity}
+          onChange={(e) => setSeverity(Number(e.target.value) as 1 | 2 | 3)}
+        >
+          <option value={1}>Slow down</option>
+          <option value={2}>Avoid if possible</option>
+          <option value={3}>Blocked</option>
+        </select>
+      </label>
+      <label>
+        Affected location
+        <select value={node} onChange={(e) => setNode(e.target.value)}>
+          <option value="suggested">
+            Suggested{" "}
+            {suggested.edge
+              ? `edge ${suggested.edge.join(" ↔ ")}`
+              : `node ${suggested.nodeIds[0] ?? "unavailable"}`}{" "}
+            · Floor {floor}
+          </option>
+          {nearby.map(([id]) => (
+            <option key={id} value={id}>
+              {graph.zones[id]?.label ?? `Nearby point ${id}`} · Floor {floor}
+            </option>
+          ))}
+        </select>
+      </label>
+      {admin && (
+        <>
+          <label className="inline-check">
+            <input
+              type="checkbox"
+              checked={persistent}
+              onChange={(e) => setPersistent(e.target.checked)}
+            />
+            Persistent admin hazard
+          </label>
+          {persistent && (
+            <label>
+              Admin access token
+              <input
+                type="password"
+                autoComplete="off"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+              />
+            </label>
+          )}
+        </>
+      )}
+      <button onClick={report}>Confirm and report</button>
+      <p role="status">{status}</p>
+    </details>
+  );
 }

@@ -23,10 +23,7 @@
       "ttlMs": 600000
     },
     "hazards": {
-      "multipliers": [
-        2,
-        6
-      ],
+      "multipliers": [2, 6],
       "ttlMs": 1800000,
       "confirmationFrames": 5,
       "windowFrames": 8,

@@ -30,7 +30,7 @@
  */
 
 export type MotionState = "flat" | "stairs" | "stationary";
-import {StepDetector} from "./position/fusion";
+import { StepDetector } from "./position/fusion";
 
 const WINDOW_MS = 2500; // how much recent motion history to analyze
 const STATIONARY_THRESHOLD = 0.15; // m/s^2 variance below this = not moving
@@ -51,7 +51,11 @@ export class StairMotionDetector {
   // it's been sustained rather than a single noisy blip
   private stairsStateStartedAt: number | null = null;
 
-  constructor(onStateChange: (state: MotionState) => void, private onStep?: () => void, stepThreshold=1.2) {
+  constructor(
+    onStateChange: (state: MotionState) => void,
+    private onStep?: () => void,
+    stepThreshold = 1.2,
+  ) {
     this.onStateChange = onStateChange;
     this.stepDetector = new StepDetector(stepThreshold);
   }
@@ -60,8 +64,13 @@ export class StairMotionDetector {
     // iOS requires an explicit user gesture (e.g. a button tap) to grant
     // motion permission -- this should be called from a button's onClick,
     // but only needs to happen ONCE per session, not per stairwell.
-    if (typeof DeviceMotionEvent === "undefined") throw new Error("Motion tracking is unavailable. Use QR scans or choose a location manually.");
-    const motionApi = DeviceMotionEvent as typeof DeviceMotionEvent & {requestPermission?:()=>Promise<string>};
+    if (typeof DeviceMotionEvent === "undefined")
+      throw new Error(
+        "Motion tracking is unavailable. Use QR scans or choose a location manually.",
+      );
+    const motionApi = DeviceMotionEvent as typeof DeviceMotionEvent & {
+      requestPermission?: () => Promise<string>;
+    };
     if (typeof motionApi.requestPermission === "function") {
       const result = await motionApi.requestPermission();
       if (result !== "granted") {
@@ -84,11 +93,12 @@ export class StairMotionDetector {
 
   private handleMotion = (event: DeviceMotionEvent) => {
     const accel = event.accelerationIncludingGravity;
-    if (!accel || accel.x === null || accel.y === null || accel.z === null) return;
+    if (!accel || accel.x === null || accel.y === null || accel.z === null)
+      return;
 
     const now = Date.now();
-    const magnitude = Math.hypot(accel.x,accel.y,accel.z);
-    if (this.stepDetector.sample(magnitude,now)) this.onStep?.();
+    const magnitude = Math.hypot(accel.x, accel.y, accel.z);
+    if (this.stepDetector.sample(magnitude, now)) this.onStep?.();
     // Orientation-independent magnitude is still a heuristic; a QR is
     // required after a planned floor transition before trusting position.
     this.samples.push({ t: now, verticalAccel: magnitude });
@@ -98,7 +108,8 @@ export class StairMotionDetector {
 
     const values = this.samples.map((s) => s.verticalAccel);
     const mean = values.reduce((a, b) => a + b, 0) / values.length;
-    const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
+    const variance =
+      values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
 
     let newState: MotionState;
     if (variance < STATIONARY_THRESHOLD) {
@@ -123,7 +134,8 @@ export class StairMotionDetector {
 
   /** How many ms the person has been continuously in "stairs" state, or 0. */
   get stairsDurationMs(): number {
-    if (this.currentState !== "stairs" || this.stairsStateStartedAt === null) return 0;
+    if (this.currentState !== "stairs" || this.stairsStateStartedAt === null)
+      return 0;
     return Date.now() - this.stairsStateStartedAt;
   }
 }

@@ -1,0 +1,14 @@
+[
+  {
+    "buildingId": "admin",
+    "loadStatus": "Loaded in 0.3 s · scale and floors unverified",
+    "fps": 23.4906037584966,
+    "environment": "Windows desktop Edge, headless software rendering; localhost; not a phone or 4G measurement"
+  },
+  {
+    "buildingId": "ynares",
+    "loadStatus": "Loaded in 0.1 s · scale and floors unverified",
+    "fps": 24.988755060222893,
+    "environment": "Windows desktop Edge, headless software rendering; localhost; not a phone or 4G measurement"
+  }
+]

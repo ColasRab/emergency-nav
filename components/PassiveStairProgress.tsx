@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { StairMotionDetector, type MotionState } from "@/lib/stairMotionDetector";
+import {
+  StairMotionDetector,
+  type MotionState,
+} from "@/lib/stairMotionDetector";
 
 /**
  * PassiveStairProgress
@@ -21,7 +24,7 @@ export default function PassiveStairProgress({
   expectingStairSegment,
   onStairSegmentConfirmed,
   onStep,
-  stepThreshold=1.2,
+  stepThreshold = 1.2,
 }: {
   expectingStairSegment: boolean; // true when the current A* step IS a stair connector
   onStairSegmentConfirmed: () => void;
@@ -34,12 +37,17 @@ export default function PassiveStairProgress({
   const firedRef = useRef(false);
   const callbackRef = useRef(onStairSegmentConfirmed);
   const stepRef = useRef(onStep);
-  const [error,setError] = useState("");
-  callbackRef.current=onStairSegmentConfirmed;
-  stepRef.current=onStep;
+  const [error, setError] = useState("");
+  callbackRef.current = onStairSegmentConfirmed;
+  stepRef.current = onStep;
 
   useEffect(() => {
-    detectorRef.current = new StairMotionDetector((newState) => setState(newState),()=>stepRef.current?.(),stepThreshold);
+    setPermissionGranted(false);
+    detectorRef.current = new StairMotionDetector(
+      (newState) => setState(newState),
+      () => stepRef.current?.(),
+      stepThreshold,
+    );
     return () => detectorRef.current?.stop();
   }, [stepThreshold]);
 
@@ -63,23 +71,42 @@ export default function PassiveStairProgress({
   }, [expectingStairSegment]);
 
   async function enableMotionTracking() {
-    try { await detectorRef.current?.requestPermissionAndStart(); setPermissionGranted(true); setError(""); }
-    catch (e) { setError(e instanceof Error?e.message:"Motion permission unavailable. Choose a floor manually."); }
+    try {
+      await detectorRef.current?.requestPermissionAndStart();
+      setPermissionGranted(true);
+      setError("");
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Motion permission unavailable. Choose a floor manually.",
+      );
+    }
   }
 
   return (
     <div className="recognizer-panel">
-      {error&&<p role="alert" className="status-warning">{error}</p>}
+      {error && (
+        <p role="alert" className="status-warning">
+          {error}
+        </p>
+      )}
       {!permissionGranted ? (
-        <button onClick={enableMotionTracking}>Enable passive motion tracking</button>
+        <button onClick={enableMotionTracking}>
+          Enable passive motion tracking
+        </button>
       ) : (
         <>
           <p className="status-line">
             Motion state: <strong>{state}</strong>
-            {expectingStairSegment && state === "stairs" && " — confirming stair segment…"}
+            {expectingStairSegment &&
+              state === "stairs" &&
+              " — confirming stair segment…"}
           </p>
           {!expectingStairSegment && (
-            <p className="status-line">No stair segment expected right now — tracking idle.</p>
+            <p className="status-line">
+              No stair segment expected right now — tracking idle.
+            </p>
           )}
         </>
       )}

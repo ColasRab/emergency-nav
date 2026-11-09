@@ -1,0 +1,22 @@
+{
+  "buildingId": "admin",
+  "pythonSourceDir": "C:/Users/colas/Documents/emergency-navigation",
+  "obj": "D:/Download/Admin buo/3DModel.obj",
+  "upAxis": null,
+  "metersPerUnit": null,
+  "origin": [0, 0, 0],
+  "resolution": 0.1,
+  "maxSnapM": 1,
+  "floors": [
+    {
+      "index": 0,
+      "baseY": null,
+      "height": null,
+      "floorBand": [-0.15, 0.15],
+      "bodyBand": [0.2, 1.8],
+      "exits": [],
+      "zones": []
+    }
+  ],
+  "stairs": []
+}

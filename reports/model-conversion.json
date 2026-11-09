@@ -4,17 +4,17 @@
     "originalTriangles": 97788,
     "triangles": 97788,
     "bytes": 2554364,
-    "conversionSeconds": 1.3748233,
+    "conversionSeconds": 1.3287586999999998,
     "verified": false,
     "withinBudget": true
   },
   {
     "id": "ynares",
     "originalTriangles": 1971338,
-    "triangles": 1954877,
-    "bytes": 26620672,
-    "conversionSeconds": 17.952117400000002,
+    "triangles": 99949,
+    "bytes": 426548,
+    "conversionSeconds": 11.948983,
     "verified": false,
-    "withinBudget": false
+    "withinBudget": true
   }
 ]

@@ -1,7 +1,55 @@
-import {it,expect} from "vitest";
-import {circularMean,addHeadingSample,StepDetector,advanceStep,markStairArrival} from "../lib/position/fusion";
-import {buildingSchema} from "../lib/buildings";
+import { it, expect } from "vitest";
+import {
+  circularMean,
+  addHeadingSample,
+  StepDetector,
+  advanceStep,
+  markStairArrival,
+} from "../lib/position/fusion";
+import { buildingSchema } from "../lib/buildings";
 import raw from "../public/models/ynares.json";
-it("averages circular offsets across north, weighting one estimate per anchor",()=>{const samples=addHeadingSample([{anchorId:"a",offset:178,weight:1}],{anchorId:"b",offset:-178,weight:1});expect(Math.abs(circularMean(samples)!)).toBeCloseTo(180);expect(addHeadingSample(samples,{anchorId:"a",offset:10,weight:2})).toHaveLength(2);});
-it("requires a new acceleration cycle and rejects rapid false steps",()=>{const d=new StepDetector();expect(d.sample(12,1000)).toBe(true);expect(d.sample(13,1100)).toBe(false);d.sample(9,1200);expect(d.sample(12,1250)).toBe(false);d.sample(9,1400);expect(d.sample(12,1500)).toBe(true);});
-it("grows uncertainty while walking and requires a scan after stairs",()=>{const config=buildingSchema.parse(raw);config.georef={originLngLat:[121,14],altitudeM:0,rotationDeg:0,scale:1,residualRmsM:0};config.graphToModel={dx:0,dz:0,rotationDeg:0,scale:1};const e={position:[0,0] as [number,number],floor:0,uncertaintyM:.5,timestamp:0,lastScanAt:0,requiresFloorScan:false,source:"qr" as const};const next=advanceStep(e,0,config,1000);expect(next.position[1]).toBeCloseTo(.7);expect(next.uncertaintyM).toBeCloseTo(.57);const stairs=markStairArrival(next,[1,2],1);expect(stairs.requiresFloorScan).toBe(true);expect(advanceStep(stairs,0,config).position).toEqual([1,2]);});
+it("averages circular offsets across north, weighting one estimate per anchor", () => {
+  const samples = addHeadingSample(
+    [{ anchorId: "a", offset: 178, weight: 1 }],
+    { anchorId: "b", offset: -178, weight: 1 },
+  );
+  expect(Math.abs(circularMean(samples)!)).toBeCloseTo(180);
+  expect(
+    addHeadingSample(samples, { anchorId: "a", offset: 10, weight: 2 }),
+  ).toHaveLength(2);
+});
+it("requires a new acceleration cycle and rejects rapid false steps", () => {
+  const d = new StepDetector();
+  expect(d.sample(12, 1000)).toBe(true);
+  expect(d.sample(13, 1100)).toBe(false);
+  d.sample(9, 1200);
+  expect(d.sample(12, 1250)).toBe(false);
+  d.sample(9, 1400);
+  expect(d.sample(12, 1500)).toBe(true);
+});
+it("grows uncertainty while walking and requires a scan after stairs", () => {
+  const config = buildingSchema.parse(raw);
+  config.georef = {
+    originLngLat: [121, 14],
+    altitudeM: 0,
+    rotationDeg: 0,
+    scale: 1,
+    residualRmsM: 0,
+  };
+  config.graphToModel = { dx: 0, dz: 0, rotationDeg: 0, scale: 1 };
+  const e = {
+    position: [0, 0] as [number, number],
+    floor: 0,
+    uncertaintyM: 0.5,
+    timestamp: 0,
+    lastScanAt: 0,
+    requiresFloorScan: false,
+    source: "qr" as const,
+  };
+  const next = advanceStep(e, 0, config, 1000);
+  expect(next.position[1]).toBeCloseTo(0.7);
+  expect(next.uncertaintyM).toBeCloseTo(0.57);
+  const stairs = markStairArrival(next, [1, 2], 1);
+  expect(stairs.requiresFloorScan).toBe(true);
+  expect(advanceStep(stairs, 0, config).position).toEqual([1, 2]);
+});
