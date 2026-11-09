@@ -4,7 +4,7 @@
     "rooms": 6,
     "floors": 1,
     "nodes": 39,
-    "glbBytes": 147608,
+    "glbBytes": 145828,
     "estimated": true
   },
   {
@@ -12,7 +12,7 @@
     "rooms": 15,
     "floors": 3,
     "nodes": 132,
-    "glbBytes": 354316,
+    "glbBytes": 354752,
     "estimated": true
   }
 ]

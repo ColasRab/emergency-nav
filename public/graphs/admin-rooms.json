@@ -4,7 +4,7 @@
     "version": 3,
     "units": "meters",
     "estimated": true,
-    "revision": "room-plan-2026-11-09-v1"
+    "revision": "room-plan-2026-11-09-v2-fences"
   },
   "nodes": {
     "100000": [

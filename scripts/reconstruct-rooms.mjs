@@ -662,6 +662,7 @@ for (const spec of manifest.buildings) {
       baseY: f.baseY,
       height: f.height,
       slabThicknessM: f.slabThicknessM,
+      railings: f.railings,
     });
     const shape = new THREE.Shape();
     const outline = [
@@ -735,38 +736,31 @@ for (const spec of manifest.buildings) {
       half,
       spec.corridorDepth,
     );
-    railing(
-      -spec.projectionWidth / 2,
-      spec.corridorDepth,
-      -spec.projectionWidth / 2,
-      spec.corridorDepth + spec.projectionDepth,
-    );
-    railing(
-      spec.projectionWidth / 2,
-      spec.corridorDepth,
-      spec.projectionWidth / 2,
-      spec.corridorDepth + spec.projectionDepth,
-    );
-    if (fi === 0) {
+    // User-confirmed fences close both corridor ends on every floor.
+    railing(-half, 0, -half, spec.corridorDepth);
+    railing(half, 0, half, spec.corridorDepth);
+    // Ground-level entrance projections stay open; upper Ynares landings
+    // have continuous rails around every exposed perimeter edge.
+    if (f.railings === "full-perimeter") {
       railing(
         -spec.projectionWidth / 2,
-        spec.corridorDepth + spec.projectionDepth,
-        -1.2,
+        spec.corridorDepth,
+        -spec.projectionWidth / 2,
         spec.corridorDepth + spec.projectionDepth,
       );
       railing(
-        1.2,
-        spec.corridorDepth + spec.projectionDepth,
+        spec.projectionWidth / 2,
+        spec.corridorDepth,
         spec.projectionWidth / 2,
         spec.corridorDepth + spec.projectionDepth,
       );
-    } else
       railing(
         -spec.projectionWidth / 2,
         spec.corridorDepth + spec.projectionDepth,
         spec.projectionWidth / 2,
         spec.corridorDepth + spec.projectionDepth,
       );
+    }
     const floorRooms = f.rooms.map((r) => {
       const x0 = roomStart + roomSpan * r.fraction[0],
         x1 = roomStart + roomSpan * r.fraction[1];

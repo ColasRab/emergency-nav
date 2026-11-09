@@ -9,6 +9,7 @@ export const floorSchema = z.object({
   slabThicknessM: z.number().positive().optional(),
   label: z.string().optional(),
   displayNumber: z.number().int().optional(),
+  railings: z.enum(["open-lobby", "full-perimeter"]).optional(),
 });
 export const roomSchema = z.object({
   id: z.string(),

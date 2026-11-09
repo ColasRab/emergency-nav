@@ -1,6 +1,6 @@
 {
   "buildingId": "ynares",
-  "revision": "room-plan-2026-11-09-v1",
+  "revision": "room-plan-2026-11-09-v2-fences",
   "sourcePlan": "/plans/campus-floor-plan.png",
   "estimated": true,
   "dimensions": {
@@ -17,7 +17,8 @@
     "The central projection is treated as an entrance lobby on the ground floor and an open landing on upper floors.",
     "The central ground-floor entrance is an assumed route-preview destination, not a verified emergency exit.",
     "The model has an open roof for inspection; cutaway wall display is optional.",
-    "The original scans are preserved as references. Their geometry is not registered to this reconstruction."
+    "The original scans are preserved as references. Their geometry is not registered to this reconstruction.",
+    "Fence layout follows the user revision: fenced corridor ends on both buildings, unfenced ground-floor entrance projections, and continuous exposed-perimeter railings on Ynares floors 2 and 3."
   ],
   "floors": [
     {
@@ -26,7 +27,8 @@
       "displayNumber": 1,
       "baseY": 0,
       "height": 3.095,
-      "slabThicknessM": 0.36
+      "slabThicknessM": 0.36,
+      "railings": "open-lobby"
     },
     {
       "index": 1,
@@ -34,7 +36,8 @@
       "displayNumber": 2,
       "baseY": 3.095,
       "height": 3.05,
-      "slabThicknessM": 0.17
+      "slabThicknessM": 0.17,
+      "railings": "full-perimeter"
     },
     {
       "index": 2,
@@ -42,7 +45,8 @@
       "displayNumber": 3,
       "baseY": 6.145,
       "height": 2.84,
-      "slabThicknessM": 0.16
+      "slabThicknessM": 0.16,
+      "railings": "full-perimeter"
     }
   ],
   "rooms": [

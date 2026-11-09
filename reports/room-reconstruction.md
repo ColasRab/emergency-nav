@@ -2,6 +2,8 @@
 
 Both buildings have been recreated from the supplied campus floor-plan image using the user's requested general assumptions. The room models are **illustrative reconstructions**, with the original scan GLBs retained separately for comparison. They are not fitted or georeferenced to the scans.
 
+Fence revision v2: the user's red/green annotations confirm fenced corridor ends and an unfenced central entrance projection for Admin and Ynares's 1st floor. Ynares's 2nd and 3rd floors retain continuous railing coverage around all exposed walkway edges, including both corridor ends and all three sides of the projecting landing. GLB, OBJ and ZIP exports have been regenerated with this layout.
+
 ## Spaces reproduced
 
 | Building / floor | Named rooms | Other modeled spaces |
@@ -56,6 +58,6 @@ Regenerating the reconstruction replaces its estimated assets, building configur
 
 TypeScript strict checking and the production build pass. The 49 TypeScript tests include actual GLB parsing, complete OBJ/material/texture bundles, correct exported elevations, room order, room-to-entrance connectivity through doors, prevention of same-floor wall crossings, stair-cutout alignment, and independent per-floor material fading. Seven production-browser checks pass, covering rooms on all floors, selection, full-building view, original-scan comparison, setup/mobile layout and the existing hazard/offline workflow. Browser captures are stored as `reconstructed-*.png`.
 
-Assets are approximately **148 KB for Admin** and **354 KB for Ynares**. The complete bundles are about **281 KB** and **688 KB**, respectively. Actual field accuracy, scan registration and geographic placement remain unverified, as indicated in the app.
+Assets are approximately **146 KB for Admin** and **355 KB for Ynares**. The complete bundles are about **279 KB** and **690 KB**, respectively. Actual field accuracy, scan registration and geographic placement remain unverified, as indicated in the app.
 
 The latest local room-model benchmark measured 0.2 s loading for both models and approximately 41.0 fps (Admin) / 39.5 fps (Ynares) in headless Windows Edge with software rendering. These are localhost/desktop measurements, not a mobile or 4G acceptance test. Bump the layout manifest revision when changing geometry so older browser alignment drafts are archived instead of applied to new room coordinates.
