@@ -22,12 +22,16 @@ export default function VoiceGuide({
   event,
   enabled,
   onStart,
+  compact = false,
+  startDisabled = false,
 }: {
   instruction: NextInstruction | null;
   config: BuildingConfig;
   event: VoiceEvent | null;
   enabled: boolean;
   onStart: () => void;
+  compact?: boolean;
+  startDisabled?: boolean;
 }) {
   const [muted, setMuted] = useState(false),
     [volume, setVolume] = useState(1),
@@ -119,8 +123,11 @@ export default function VoiceGuide({
     });
   }, [event, language]);
   return (
-    <section className="voice-controls" aria-label="Voice guidance">
-      <p className="caption">
+    <section
+      className={`voice-controls ${compact ? "compact-voice-controls" : ""}`}
+      aria-label="Voice guidance"
+    >
+      <p className={`caption ${compact ? "sr-only" : ""}`}>
         {caption || "Start navigation to enable spoken guidance."}
       </p>
       <span className="sr-only" aria-live="polite">
@@ -132,6 +139,7 @@ export default function VoiceGuide({
       <div className="button-row">
         {!enabled && (
           <button
+            disabled={startDisabled}
             onClick={() => {
               speaker.current?.unlock();
               scheduler.current.reset();
@@ -153,22 +161,24 @@ export default function VoiceGuide({
         <button aria-pressed={muted} onClick={() => setMuted((v) => !v)}>
           {muted ? "Unmute" : "Mute"}
         </button>
-        <button
-          disabled={!last.current}
-          onClick={() =>
-            speaker.current?.speak(
-              {
-                id: "repeat",
-                text: last.current,
-                priority: "maneuver",
-                expiresAt: Date.now() + 5000,
-              },
-              true,
-            )
-          }
-        >
-          Repeat instruction
-        </button>
+        {!compact && (
+          <button
+            disabled={!last.current}
+            onClick={() =>
+              speaker.current?.speak(
+                {
+                  id: "repeat",
+                  text: last.current,
+                  priority: "maneuver",
+                  expiresAt: Date.now() + 5000,
+                },
+                true,
+              )
+            }
+          >
+            Repeat instruction
+          </button>
+        )}
       </div>
       <details>
         <summary>Voice settings</summary>

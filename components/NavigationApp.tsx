@@ -1,170 +1,157 @@
 "use client";
-import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ZoneRecognizer from "./ZoneRecognizer";
-import QRAndCrowdRecognizer, {
-  type QRScanUpdate,
-} from "./QRAndCrowdRecognizer";
 import CameraNavigation from "./CameraNavigation";
-import PassiveStairProgress from "./PassiveStairProgress";
 import VoiceGuide, { type VoiceEvent } from "./VoiceGuide";
-import HazardScanner from "./HazardScanner";
 import HazardReport from "./HazardReport";
 import HazardList from "./HazardList";
-import RoomDirectory from "./RoomDirectory";
-import RoomStartPicker from "./RoomStartPicker";
+import AppSheet from "./navigation/AppSheet";
+import LocationChooser from "./navigation/LocationChooser";
+import GpsLocationSetup from "./navigation/GpsLocationSetup";
 import { useBuildingData } from "@/lib/clientData";
-import { floorLabel, type BuildingId, type Room } from "@/lib/buildings";
+import { floorLabel, type BuildingId } from "@/lib/buildings";
+import { nearestNodeOnFloor } from "@/lib/astar";
 import {
   attachRoomStart,
   isRoomPointWalkable,
 } from "@/lib/navigation/roomStart";
-import { nearestNodeOnFloor } from "@/lib/astar";
-import type { GpsFix } from "@/lib/calibration";
 import {
-  acceptQr,
-  advanceStep,
-  addHeadingSample,
-  circularMean,
-  markStairArrival,
-  type HeadingSample,
-  type PositionEstimate,
-} from "@/lib/position/fusion";
-import { useCompass } from "@/lib/position/compass";
-import { distanceToPath } from "@/lib/position/progress";
-import {
-  graphToModel,
   applySimilarity,
-  invertSimilarity,
   normalizeSignedDegrees,
   type Vec2,
-  type Vec3,
 } from "@/lib/geo/transform";
+import { useCompass } from "@/lib/position/compass";
+import type { PositionEstimate } from "@/lib/position/fusion";
 import {
-  nextInstruction,
-  type PhraseKey,
-} from "@/lib/voice/instructionBuilder";
-import { InstructionScheduler, type Priority } from "@/lib/voice/scheduler";
-import { routeWithHazards } from "@/lib/hazards/routing";
+  buildingLocationPoints,
+  calibrationKey,
+  gpsFixSchema,
+  gpsModelHeadingOffset,
+  gpsToModelPosition,
+  matchGpsToModel,
+  modelPointToGraph,
+  readLocationCalibration,
+  type LocationCalibration,
+  type LocationPoint,
+} from "@/lib/position/gpsCalibration";
 import { useHazards } from "@/lib/hazards/client";
-import { loadAnchors, type QRAnchor } from "@/lib/qr/anchors";
-import { logEvent } from "@/lib/events";
-const ScanViewer = dynamic(() => import("./map/ScanViewer"), { ssr: false });
-const BuildingMap = dynamic(() => import("./map/BuildingMap"), { ssr: false });
+import { routeWithHazards } from "@/lib/hazards/routing";
+import { nextInstruction } from "@/lib/voice/instructionBuilder";
+
 export default function NavigationApp() {
-  const [selectedRoomId, setSelectedRoomId] = useState<string | undefined>();
-  const [modelRoute, setModelRoute] = useState(false),
-    [modelRoomId, setModelRoomId] = useState<string | null>(null),
-    [modelHeadingOffset, setModelHeadingOffset] = useState<number | null>(null);
   const admin = useBuildingData("admin"),
     ynares = useBuildingData("ynares"),
-    [id, setId] = useState<BuildingId>("admin");
-  const { config, graph, error } = id === "admin" ? admin : ynares,
+    [id, setId] = useState<BuildingId>("ynares"),
+    [floor, setFloor] = useState(1),
+    { config, graph, error } = id === "admin" ? admin : ynares,
     store = useHazards(id),
     compass = useCompass();
-  const [mode, setMode] = useState<"qr" | "ocr" | "navigate">("qr"),
-    [floor, setFloor] = useState(0),
+  const [sheet, setSheet] = useState<
+      "location" | "gps" | "reports" | "more" | null
+    >(null),
     [estimate, setEstimate] = useState<PositionEstimate | null>(null),
-    [label, setLabel] = useState("Choose your location"),
-    [status, setStatus] = useState(
-      "Scan a surveyed QR sticker, or choose a location manually.",
+    [calibration, setCalibration] = useState<LocationCalibration | null>(null),
+    [gpsRunning, setGpsRunning] = useState(false),
+    [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null),
+    [lastGpsAt, setLastGpsAt] = useState<number | null>(null),
+    [message, setMessage] = useState(
+      "Set where you are standing, or calibrate two GPS locations.",
     ),
+    [manualOffset, setManualOffset] = useState<number | null>(null),
+    [pendingFacing, setPendingFacing] = useState<number | null>(null),
+    [fallbackFacing, setFallbackFacing] = useState(180),
+    [lastPointId, setLastPointId] = useState<string | undefined>(),
     [navigating, setNavigating] = useState(false),
-    [video, setVideo] = useState<HTMLVideoElement | null>(null),
-    [now, setNow] = useState(Date.now()),
     [voiceEvent, setVoiceEvent] = useState<VoiceEvent | null>(null),
-    [anchors, setAnchors] = useState<QRAnchor[]>([]),
-    [pendingScan, setPendingScan] = useState<{
-      nodeId: number;
-      label: string;
-      details: QRScanUpdate;
-    } | null>(null),
-    [headingSamples, setHeadingSamples] = useState<HeadingSample[]>([]);
-  const previousPath = useRef<number[] | null>(null),
-    announcedPath = useRef<number[] | null>(null),
-    offRoute = useRef(new InstructionScheduler()),
-    lastHazardRevision = useRef(""),
-    lastOffRoute = useRef(0),
+    [now, setNow] = useState(Date.now());
+  const watch = useRef<number | null>(null),
+    watchEpoch = useRef(0),
+    previousPath = useRef<number[] | null>(null),
     eventId = useRef(0),
-    lastRoute = useRef<string>("");
-  const emit = useCallback(
-    (key: PhraseKey, priority: Priority = "info", targetFloor?: number) =>
-      setVoiceEvent({
-        id: ++eventId.current,
-        key,
-        priority,
-        floor: targetFloor,
-      }),
-    [],
-  );
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
+    lastRoute = useRef(""),
+    lastHazards = useRef("");
+  const stopGps = useCallback(() => {
+    watchEpoch.current++;
+    if (watch.current !== null)
+      navigator.geolocation?.clearWatch(watch.current);
+    watch.current = null;
+    setGpsRunning(false);
   }, []);
   useEffect(() => {
-    setEstimate(null);
-    setLabel("Choose your location");
-    setFloor(0);
-    setNavigating(false);
-    setVideo(null);
-    setHeadingSamples([]);
-    setModelRoute(false);
-    setModelRoomId(null);
-    setModelHeadingOffset(null);
-    setPendingScan(null);
-    setStatus("Scan a surveyed QR sticker, or choose a location manually.");
-    previousPath.current = null;
-    announcedPath.current = null;
-    lastRoute.current = "";
-    lastHazardRevision.current = "";
-    setAnchors([]);
-    let cancelled = false;
-    loadAnchors(id)
-      .then((a) => {
-        if (!cancelled) setAnchors(a);
-      })
-      .catch(() => {});
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => {
-      cancelled = true;
+      clearInterval(timer);
+      watchEpoch.current++;
+      if (watch.current !== null)
+        navigator.geolocation?.clearWatch(watch.current);
     };
-  }, [id]);
-  const headingOffset = modelRoute
-      ? (modelHeadingOffset ?? 0)
-      : (circularMean(headingSamples) ?? 0),
+  }, []);
+  useEffect(() => {
+    if (!config) return;
+    setCalibration(readLocationCalibration(config));
+    if (new URLSearchParams(location.search).get("setup") === "gps")
+      setSheet("gps");
+  }, [config?.id, config?.modelRevision]);
+  useEffect(() => {
+    if (
+      pendingFacing !== null &&
+      compass.reading.current &&
+      Date.now() - compass.reading.current.at < 3000
+    ) {
+      setManualOffset(
+        normalizeSignedDegrees(pendingFacing - compass.reading.current.heading),
+      );
+      setPendingFacing(null);
+    }
+  }, [compass.heading, pendingFacing]);
+  const headingOffset = calibration
+      ? gpsModelHeadingOffset(calibration)
+      : (manualOffset ?? 0),
+    rawHeading =
+      compass.reading.current && now - compass.reading.current.at < 3000
+        ? compass.heading
+        : null,
+    aligned = calibration !== null || manualOffset !== null,
     heading =
-      compass.heading === null
-        ? null
-        : normalizeSignedDegrees(compass.heading + headingOffset),
-    currentFloor = estimate?.floor ?? floor;
-  const modelRoom = config?.rooms?.find((room) => room.id === modelRoomId),
-    selectedRoom = config?.rooms?.find(
-      (room) => room.id === selectedRoomId && room.floor === floor,
-    );
+      rawHeading !== null && aligned
+        ? normalizeSignedDegrees(rawHeading + headingOffset)
+        : null;
+  const modelPoint = useMemo(
+    () =>
+      estimate && config
+        ? config.graphToModel
+          ? applySimilarity(estimate.position, config.graphToModel)
+          : estimate.position
+        : null,
+    [estimate, config],
+  );
+  const room = useMemo(
+    () =>
+      modelPoint && config
+        ? config.rooms?.find(
+            (r) => r.floor === floor && isRoomPointWalkable(r, modelPoint),
+          )
+        : undefined,
+    [modelPoint, config, floor],
+  );
   const attachment = useMemo(
     () =>
-      graph && modelRoute && modelRoom && estimate && config?.graphToModel
-        ? attachRoomStart(
-            graph,
-            modelRoom,
-            applySimilarity(estimate.position, config.graphToModel),
-            config.graphToModel,
-          )
+      graph && room && modelPoint && config?.graphToModel
+        ? attachRoomStart(graph, room, modelPoint, config.graphToModel)
         : null,
-    [graph, modelRoute, modelRoom, estimate, config?.graphToModel],
+    [graph, room, modelPoint, config?.graphToModel],
   );
-  const routeGraph = attachment?.graph ?? graph;
-  const nodeId = useMemo(
-    () =>
-      attachment
-        ? attachment.startId
-        : routeGraph && estimate
-          ? nearestNodeOnFloor(routeGraph, ...estimate.position, estimate.floor)
-          : null,
-    [routeGraph, estimate, attachment],
-  );
+  const routeGraph = attachment?.graph ?? graph,
+    nodeId = useMemo(
+      () =>
+        attachment?.startId ??
+        (routeGraph && estimate
+          ? nearestNodeOnFloor(routeGraph, ...estimate.position, floor)
+          : null),
+      [attachment, routeGraph, estimate, floor],
+    );
   const result = useMemo(
     () =>
-      routeGraph && config && nodeId !== null && nodeId >= 0
+      routeGraph && config && nodeId !== null
         ? routeWithHazards(
             routeGraph,
             nodeId,
@@ -181,15 +168,16 @@ export default function NavigationApp() {
   }, [result]);
   const instruction = useMemo(
     () =>
-      routeGraph && config && estimate && result?.path
+      routeGraph && config && estimate && result?.path && !result.fallback
         ? nextInstruction(
             routeGraph,
             result.path,
             estimate.position,
-            estimate.floor,
+            floor,
             config,
-            modelRoute && modelHeadingOffset === null ? null : heading,
-            modelRoute ? "model" : "world",
+            heading,
+            "model",
+            1 / (calibration?.modelPerGpsMeter ?? 1),
           )
         : null,
     [
@@ -197,9 +185,10 @@ export default function NavigationApp() {
       config,
       estimate,
       result?.path,
+      result?.fallback,
+      floor,
       heading,
-      modelRoute,
-      modelHeadingOffset,
+      calibration?.modelPerGpsMeter,
     ],
   );
   const hazardRevision = store.hazards
@@ -208,718 +197,484 @@ export default function NavigationApp() {
     .join("|");
   useEffect(() => {
     if (!navigating || !result?.path) return;
-    const route = result.path.join(",");
-    if (result.fallback && lastRoute.current !== `blocked:${route}`) {
-      emit("blocked", "emergency");
-      lastRoute.current = `blocked:${route}`;
-    } else if (
-      !result.fallback &&
-      lastHazardRevision.current !== hazardRevision &&
-      lastRoute.current &&
-      lastRoute.current !== route
-    ) {
-      emit("reroute", "emergency");
-      announcedPath.current = result.path;
-      lastRoute.current = route;
-      logEvent({ event: "reroute", buildingId: id, floor: currentFloor });
-    } else if (!lastRoute.current) lastRoute.current = route;
-    lastHazardRevision.current = hazardRevision;
-  }, [result, hazardRevision, navigating, emit, id, currentFloor]);
-  useEffect(() => {
+    const route = result.path.join(","),
+      blocked = result.fallback;
     if (
-      modelRoute ||
-      !navigating ||
-      !routeGraph ||
-      !config ||
-      !estimate ||
-      !announcedPath.current
-    )
-      return;
-    const scale =
-        (config.graphToModel?.scale ?? 1) * (config.georef?.scale ?? 1),
-      v = config.settings.voice,
-      distance = distanceToPath(
-        routeGraph,
-        announcedPath.current,
-        estimate.position,
-        estimate.floor,
-        scale,
-      );
-    if (
-      offRoute.current.offRoute(distance, now, v.offRouteM, v.offRouteMs) &&
-      now - lastOffRoute.current > 8000
+      (blocked && lastRoute.current !== `blocked:${route}`) ||
+      (!blocked &&
+        lastRoute.current &&
+        lastRoute.current !== route &&
+        lastHazards.current !== hazardRevision)
     ) {
-      lastOffRoute.current = now;
-      emit("offroute", "maneuver");
-      previousPath.current = null;
-      announcedPath.current = result?.path ?? null;
-      setStatus("Route recalculated. Check your position or scan a nearby QR.");
+      setVoiceEvent({
+        id: ++eventId.current,
+        key: blocked ? "blocked" : "reroute",
+        priority: "emergency",
+      });
     }
-  }, [
-    navigating,
-    routeGraph,
-    config,
-    estimate,
-    now,
-    result?.path,
-    emit,
-    modelRoute,
-  ]);
-  const expectingStairs = !!(
-    !modelRoute &&
-    routeGraph &&
-    result?.path &&
-    result.path.length > 1 &&
-    routeGraph.nodes[result.path[0]][2] !== routeGraph.nodes[result.path[1]][2]
-  );
-  const handleStairs = useCallback(() => {
-    if (
-      modelRoute ||
-      !graph ||
-      !result?.path ||
-      !estimate ||
-      result.path.length < 2
-    )
-      return;
-    const n = graph.nodes[result.path[1]];
-    setEstimate(markStairArrival(estimate, [n[0], n[1]], n[2]));
-    setFloor(n[2]);
-    setStatus(
-      "Planned stair segment detected. Confirm the new floor with a QR scan.",
-    );
-    emit("floor", "maneuver", n[2]);
-  }, [graph, result?.path, estimate, emit, modelRoute]);
-  const handleStep = useCallback(() => {
-    if (
-      !config ||
-      modelRoute ||
-      heading === null ||
-      !config.graphToModel ||
-      !config.georef ||
-      !navigating
-    )
-      return;
-    setEstimate((previous) =>
-      previous ? advanceStep(previous, heading, config) : null,
-    );
-  }, [config, heading, navigating, modelRoute]);
-  function startFromRoom(room: Room, point: Vec2, name: string) {
-    if (!graph || !config?.graphToModel || !isRoomPointWalkable(room, point))
-      return;
-    setModelRoute(true);
-    setModelRoomId(room.id);
-    setModelHeadingOffset(null);
-    setNavigating(false);
+    lastRoute.current = blocked ? `blocked:${route}` : route;
+    lastHazards.current = hazardRevision;
+  }, [result, navigating, hazardRevision]);
+
+  function putAt(
+    point: Vec2,
+    targetFloor: number,
+    source: "manual" | "gps" = "manual",
+    uncertainty = 4,
+  ) {
+    if (!config) return;
     setEstimate({
-      position: invertSimilarity(point, config.graphToModel),
-      floor: room.floor,
-      uncertaintyM: 4,
+      position: modelPointToGraph(config, point),
+      floor: targetFloor,
+      uncertaintyM: uncertainty,
       timestamp: Date.now(),
       lastScanAt: null,
-      requiresFloorScan: true,
-      source: "manual",
+      requiresFloorScan: false,
+      source,
     });
-    setFloor(room.floor);
-    setMode("navigate");
-    setPendingScan(null);
-    setLabel(`${room.label} — ${name.toLowerCase()}`);
-    setStatus(
-      "Starting point set in the model. Open Camera guide and set your facing direction. Confirm waypoints as you reach them.",
-    );
     previousPath.current = null;
-    announcedPath.current = null;
   }
-  function alignModel(facing: number) {
-    const reading = compass.reading.current;
-    if (!reading || Date.now() - reading.at > 3000) {
-      setStatus(
-        "Enable the compass and wait for a fresh reading, then align again.",
-      );
+  function chooseLocation(point: LocationPoint, facing: number) {
+    stopGps();
+    putAt(point.model, point.floor);
+    setFloor(point.floor);
+    setLastPointId(point.id);
+    setFallbackFacing(facing);
+    setManualOffset(null);
+    setPendingFacing(calibration ? null : facing);
+    setGpsAccuracy(null);
+    setLastGpsAt(null);
+    setNavigating(false);
+    setSheet(null);
+    setMessage(`${point.label} selected. GPS tracking is off.`);
+    void compass.enable();
+  }
+  function startGps(chosen = calibration, targetFloor = floor) {
+    if (!config || !graph || !chosen) {
+      setNavigating(false);
+      setSheet("gps");
       return;
     }
-    setModelHeadingOffset(normalizeSignedDegrees(facing - reading.heading));
-    setStatus(
-      "Facing direction aligned manually to the model. Position changes only when you confirm a waypoint or choose a new starting point.",
+    if (!("geolocation" in navigator)) {
+      setMessage("Location access is unavailable. Use Set location.");
+      return;
+    }
+    stopGps();
+    const epoch = ++watchEpoch.current;
+    setGpsRunning(true);
+    setLastGpsAt(null);
+    setMessage("Waiting for GPS location…");
+    setPendingFacing(null);
+    void compass.enable();
+    watch.current = navigator.geolocation.watchPosition(
+      (position) => {
+        if (watchEpoch.current !== epoch) return;
+        try {
+          const fix = gpsFixSchema.parse({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: position.timestamp,
+          });
+          if (
+            Date.now() - fix.timestamp > 30000 ||
+            fix.timestamp > Date.now() + 5000
+          ) {
+            setMessage("Waiting for a fresh GPS reading. Last location kept.");
+            return;
+          }
+          setGpsAccuracy(fix.accuracy);
+          if (fix.accuracy > 50) {
+            setMessage(
+              "GPS is too imprecise to place you. Use Set location or try again.",
+            );
+            return;
+          }
+          const matched = matchGpsToModel(
+            config,
+            graph,
+            gpsToModelPosition(fix, chosen),
+            targetFloor,
+          );
+          if (!matched) {
+            setMessage(
+              "GPS is outside the modeled walkways. Last location kept; check the two calibration points.",
+            );
+            return;
+          }
+          putAt(
+            matched.model,
+            targetFloor,
+            "gps",
+            fix.accuracy + matched.correctionM / chosen.modelPerGpsMeter,
+          );
+          setLastGpsAt(Date.now());
+          setMessage(
+            chosen.lowConfidence
+              ? "Live GPS estimate · calibration has low confidence"
+              : "Live GPS estimate · floor selected manually",
+          );
+        } catch {
+          setMessage("This GPS reading could not be used. Last location kept.");
+        }
+      },
+      (error) => {
+        if (watchEpoch.current !== epoch) return;
+        if (error.code === 1) stopGps();
+        setMessage(
+          error.code === 1
+            ? "Location permission denied. Use Set location or allow location access."
+            : "GPS is unavailable right now. Last location kept.",
+        );
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 },
     );
   }
+  function applyCalibration(next: LocationCalibration) {
+    if (!config) return;
+    try {
+      localStorage.setItem(calibrationKey(config), JSON.stringify(next));
+    } catch {
+      setMessage(
+        "Calibration is active for this session; device storage is unavailable.",
+      );
+    }
+    setCalibration(next);
+    putAt(next.second.point.model, floor);
+    setLastPointId(next.second.point.id);
+    setSheet(null);
+    setManualOffset(null);
+    setPendingFacing(null);
+    startGps(next, floor);
+  }
+  function changeBuilding(next: BuildingId) {
+    stopGps();
+    setId(next);
+    setFloor(next === "ynares" ? 1 : 0);
+    setEstimate(null);
+    setCalibration(null);
+    setManualOffset(null);
+    setPendingFacing(null);
+    setLastPointId(undefined);
+    setNavigating(false);
+    setSheet(null);
+    setGpsAccuracy(null);
+    setLastGpsAt(null);
+    setMessage("Set your location or calibrate GPS for this building.");
+    previousPath.current = null;
+  }
+  function changeFloor(next: number) {
+    stopGps();
+    setFloor(next);
+    setEstimate(null);
+    setNavigating(false);
+    setLastGpsAt(null);
+    setGpsAccuracy(null);
+    setLastPointId(undefined);
+    setMessage("Floor selected. Use GPS or set where you are standing.");
+    previousPath.current = null;
+  }
   const waypointId =
-    modelRoute && result?.path && routeGraph
-      ? result.path.slice(1).find((n) => {
-          const p = routeGraph.nodes[n];
+    routeGraph && result?.path && estimate
+      ? result.path.slice(1).find((id) => {
+          const n = routeGraph.nodes[id];
           return (
-            p &&
-            estimate &&
-            (p[2] !== estimate.floor ||
+            n &&
+            (n[2] !== floor ||
               Math.hypot(
-                p[0] - estimate.position[0],
-                p[1] - estimate.position[1],
+                n[0] - estimate.position[0],
+                n[1] - estimate.position[1],
               ) > 0.03)
           );
         })
       : undefined;
   function confirmWaypoint() {
     if (
-      waypointId === undefined ||
       !routeGraph ||
+      waypointId === undefined ||
       !config ||
-      !estimate ||
-      result?.fallback
+      result?.fallback ||
+      gpsRunning
     )
       return;
-    const [x, z, f] = routeGraph.nodes[waypointId],
-      point: Vec2 = [x, z],
-      room = config.rooms?.find(
-        (r) =>
-          r.floor === f &&
-          isRoomPointWalkable(
-            r,
-            config.graphToModel
-              ? applySimilarity(point, config.graphToModel)
-              : point,
-          ),
-      );
-    setModelRoomId(room?.id ?? null);
-    setEstimate({
-      ...estimate,
-      position: point,
-      floor: f,
-      timestamp: Date.now(),
-    });
-    setFloor(f);
-    setLabel(routeGraph.zones[waypointId]?.label ?? "Confirmed model waypoint");
-    setStatus(
-      `Position advanced by your confirmation${f !== estimate.floor ? ` to ${floorLabel(config, f)}` : ""}. Confirm the next point only after reaching it.`,
-    );
-    previousPath.current = null;
-    announcedPath.current = null;
+    const n = routeGraph.nodes[waypointId],
+      point = config.graphToModel
+        ? applySimilarity([n[0], n[1]], config.graphToModel)
+        : ([n[0], n[1]] as Vec2);
+    putAt(point, n[2]);
+    setFloor(n[2]);
+    setMessage("Location advanced to the confirmed waypoint.");
   }
-  function manualLocation(
-    value: number,
-    source: "manual" | "sign" = "manual",
-    name?: string,
-  ) {
-    if (!graph?.nodes[value]) return;
-    setModelRoute(false);
-    setModelRoomId(null);
-    setModelHeadingOffset(null);
-    previousPath.current = null;
-    const [x, z, f] = graph.nodes[value];
-    setEstimate({
-      position: [x, z],
-      floor: f,
-      uncertaintyM: 4,
-      timestamp: Date.now(),
-      lastScanAt: null,
-      requiresFloorScan: true,
-      source,
-    });
-    setFloor(f);
-    setLabel(name ?? graph.zones[value]?.label ?? `Mapped point ${value}`);
-    setStatus(
-      "Approximate location selected. Scan a surveyed QR to calibrate position and heading.",
-    );
-    emit("uncertain");
-  }
-  function qrUpdate(
-    value: number,
-    name: string,
-    _penalty: number,
-    _count: number,
-    _gps: GpsFix | null,
-    details?: QRScanUpdate,
-    relocated = false,
-  ) {
-    if (!graph || !config) return;
-    const f = graph.nodes[value]?.[2];
-    if (f === undefined) return;
-    if (!details?.pose) {
-      manualLocation(value, "manual", name);
-      setStatus(
-        "Legacy sticker found. Location accuracy is low; it does not calibrate heading.",
-      );
-      return;
-    }
-    try {
-      const next = acceptQr(estimate, details.pose, f, config, relocated);
-      if (estimate?.source === "steps" && !estimate.requiresFloorScan) {
-        const distance =
-          Math.hypot(
-            estimate.position[0] - next.position[0],
-            estimate.position[1] - next.position[1],
-          ) *
-          (config.graphToModel?.scale ?? 1) *
-          (config.georef?.scale ?? 1);
-        logEvent({
-          event: "anchor_disagreement",
-          buildingId: id,
-          anchorId: details.anchorId,
-          errorM: distance,
-          floor: f,
-        });
-      }
-      setEstimate(next);
-      setModelRoute(false);
-      setModelRoomId(null);
-      setModelHeadingOffset(null);
-      setFloor(f);
-      setLabel(name);
-      setPendingScan(null);
-      setStatus(
-        "Surveyed QR position accepted. Rescan whenever uncertainty grows.",
-      );
-      const reading = compass.reading.current;
-      if (reading && Date.now() - reading.at < 3000)
-        setHeadingSamples((samples) =>
-          addHeadingSample(samples, {
-            anchorId: details.anchorId ?? name,
-            offset: normalizeSignedDegrees(details.pose!.yaw - reading.heading),
-            weight: 1 / Math.max(0.1, details.pose!.uncertaintyM) ** 2,
-          }),
-        );
-      else
-        setStatus(
-          "Position updated. Enable the compass before scanning to calibrate heading too.",
-        );
-      logEvent({
-        event: "qr_accepted",
-        buildingId: id,
-        anchorId: details.anchorId,
-        floor: f,
-      });
-      emit("updated");
-    } catch (e) {
-      setPendingScan({ nodeId: value, label: name, details });
-      setStatus(e instanceof Error ? e.message : "Scan rejected");
-      logEvent({
-        event: "qr_rejected",
-        buildingId: id,
-        anchorId: details.anchorId,
-        floor: f,
-      });
-    }
-  }
-  const configs = [admin.config, ynares.config].filter(
-    (c): c is NonNullable<typeof c> => c !== null,
-  );
-  const overlayPoints = useMemo(() => {
-    if (!config) return [];
-    const points = anchors
-      .filter((a) => a.floor === floor)
-      .map((a) => ({ position: a.position, color: "#ffc75e" }));
-    if (graph && config.graphToModel)
-      for (const h of store.hazards.filter((h) => h.floor === floor)) {
-        const n = graph.nodes[h.nodeIds[0]];
-        if (n)
-          points.push({
-            position: graphToModel(n, config, 0.5),
-            color: "#ff645f",
-          });
-      }
-    return points;
-  }, [anchors, floor, config, graph, store.hazards]);
-  const user = useMemo<Vec3 | undefined>(
-    () => (estimate ? [...estimate.position, estimate.floor] : undefined),
-    [estimate],
-  );
-  useEffect(() => setSelectedRoomId(undefined), [id, floor]);
+  const gpsFresh = gpsRunning && lastGpsAt !== null && now - lastGpsAt < 20000,
+    basis = gpsRunning
+      ? gpsFresh
+        ? `GPS estimate · reported ±${gpsAccuracy?.toFixed(1) ?? "?"} m`
+        : "Waiting for fresh GPS · last location kept"
+      : estimate?.source === "gps"
+        ? "Last GPS estimate · tracking off"
+        : "Selected location · GPS off";
+  const floorNames = config
+    ? Object.fromEntries(
+        config.floors.map((f) => [f.index, floorLabel(config, f.index)]),
+      )
+    : {};
   return (
-    <main className="wide-main">
-      <h1>Emergency Wayfinder</h1>
-      <p className="subtitle">Admin & Ynares · Indoor wayfinding</p>
-      <p className="safety-note">
-        Follow official evacuation signs and staff instructions. This app
-        supports wayfinding and never replaces official evacuation procedures.
-      </p>
-      <nav className="admin-nav" aria-label="Setup">
-        <a href="/admin/alignment">Building setup</a>
-        <a href="/admin/anchors">QR survey</a>
-        <a href="/admin/hazards">Manage hazards</a>
-      </nav>
-      <div className="two-columns">
+    <main className="navigation-shell">
+      <header className="navigation-app-header">
+        <div>
+          <h1>Wayfinder</h1>
+          <span>Admin & Ynares</span>
+        </div>
+        <span
+          className={`connection-pill ${store.shared ? "connected" : ""}`}
+          title={store.status}
+        >
+          {store.shared ? "Connected" : "Local mode"}
+        </span>
+        <button
+          className="minimal-button"
+          onClick={() => setSheet("more")}
+          aria-label="More options"
+        >
+          •••
+        </button>
+      </header>
+      <div className="navigation-toolbar">
         <label>
           Building
           <select
             value={id}
-            onChange={(e) => setId(e.target.value as BuildingId)}
+            disabled={!config || !graph}
+            onChange={(e) => changeBuilding(e.target.value as BuildingId)}
           >
-            <option value="admin">Admin Building</option>
             <option value="ynares">Ynares Building</option>
+            <option value="admin">Admin Building</option>
           </select>
         </label>
-        {config && (
-          <label>
-            Displayed floor
-            <select
-              value={floor}
-              onChange={(e) => setFloor(Number(e.target.value))}
-            >
-              {config.floors.map((f) => (
-                <option key={f.index} value={f.index}>
-                  {floorLabel(config, f.index)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        <label>
+          Floor
+          <select
+            value={floor}
+            disabled={!config || !graph}
+            onChange={(e) => changeFloor(Number(e.target.value))}
+          >
+            {config?.floors.map((f) => (
+              <option key={f.index} value={f.index}>
+                {floorLabel(config, f.index)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          disabled={!graph}
+          onClick={() => {
+            stopGps();
+            setNavigating(false);
+            setSheet("location");
+          }}
+        >
+          Set location
+        </button>
+        <button
+          disabled={!graph}
+          onClick={() => {
+            stopGps();
+            setNavigating(false);
+            setSheet("gps");
+          }}
+        >
+          Calibrate GPS
+        </button>
+        <button
+          disabled={!graph}
+          className={gpsRunning ? "tracking-active" : ""}
+          onClick={() =>
+            gpsRunning
+              ? (stopGps(),
+                setMessage("GPS tracking stopped. Last location kept."))
+              : startGps()
+          }
+        >
+          {gpsRunning ? "Stop GPS" : "Use GPS"}
+        </button>
       </div>
-      {error && <p role="alert">{error}</p>}
-      {!config && <p>Loading building…</p>}
-      {config && (
-        <>
-          {(!config.modelVerified ||
-            !config.graphVerified ||
-            !config.floorsVerified) && (
-            <p className="setup-note">
-              <strong>
-                {config.modelKind === "room-layout"
-                  ? "Estimated reconstruction."
-                  : "Survey setup required."}
-              </strong>{" "}
-              {config.modelKind === "room-layout"
-                ? "Rooms follow your floor plan. Horizontal dimensions, doorways, furniture and the entrance route are assumptions; verify them on site."
-                : "Scan scale, floor heights, paths and real exits need physical verification. Routes shown here are previews."}
-            </p>
-          )}
-          <ScanViewer
+      <p className="navigation-live-status" role="status">
+        {error || message}
+        {gpsRunning && gpsAccuracy !== null
+          ? ` · GPS ±${gpsAccuracy.toFixed(1)} m`
+          : ""}
+      </p>
+      <div className="navigation-stage">
+        {config && routeGraph ? (
+          <CameraNavigation
+            key={id}
+            compact
             config={config}
             graph={routeGraph}
-            path={result?.path ?? []}
-            floor={floor}
-            user={user}
-            points={overlayPoints}
-            selectedRoomId={selectedRoomId}
-            onRoomSelect={setSelectedRoomId}
+            path={result?.path ?? null}
+            graphPosition={estimate?.position ?? null}
+            currentFloor={floor}
+            instruction={instruction}
+            headingOffset={headingOffset}
+            compassHeading={rawHeading}
+            compassStatus={compass.status}
+            onEnableCompass={compass.enable}
+            modelBased
+            modelAligned={aligned}
+            fallbackHeading={estimate ? fallbackFacing : 0}
+            locationBasis={basis}
+            modelPerMeter={calibration?.modelPerGpsMeter ?? 1}
+            onConfirmWaypoint={
+              !gpsRunning &&
+              estimate &&
+              waypointId !== undefined &&
+              !result?.fallback
+                ? confirmWaypoint
+                : undefined
+            }
+            nextWaypointLabel={
+              waypointId !== undefined
+                ? routeGraph.zones[waypointId]?.label
+                : undefined
+            }
           />
-          <RoomDirectory
+        ) : (
+          <div className="navigation-loading">
+            {error || "Loading building model…"}
+          </div>
+        )}
+        {result?.fallback && (
+          <p className="navigation-route-alert" role="alert">
+            Mapped routes are blocked. Follow official signs and staff
+            instructions.
+          </p>
+        )}
+        {estimate && !result?.path && (
+          <p className="navigation-route-alert" role="alert">
+            No connected entrance route from this estimate. Set your location
+            again.
+          </p>
+        )}
+      </div>
+      <footer className="navigation-controls">
+        {config && estimate ? (
+          <VoiceGuide
+            key={`voice-${id}`}
+            compact
+            instruction={instruction}
             config={config}
-            floor={floor}
-            selected={selectedRoomId}
-            onSelect={setSelectedRoomId}
+            event={voiceEvent}
+            enabled={navigating}
+            startDisabled={!result?.path || result.fallback}
+            onStart={() => {
+              if (result?.path && !result.fallback) {
+                setNavigating(true);
+                lastRoute.current = "";
+              }
+            }}
           />
-          {selectedRoom && config.modelKind === "room-layout" && graph && (
-            <RoomStartPicker
-              key={`${id}:${selectedRoom.id}`}
-              room={selectedRoom}
-              graph={routeGraph}
-              transform={config.graphToModel ?? undefined}
-              path={result?.path ?? []}
-              onStart={startFromRoom}
-            />
-          )}
-          {config.modelKind === "room-layout" && !selectedRoom && (
-            <p className="setup-note">
-              Select a room above to choose your starting point inside it, such
-              as a back corner.
-            </p>
-          )}
-          {(!modelRoute || config.georef) && (
-            <BuildingMap
-              configs={configs}
-              activeId={id}
+        ) : (
+          <span className="navigation-hint">
+            Set your location to start directions.
+          </span>
+        )}
+        {navigating && (
+          <button onClick={() => setNavigating(false)}>Stop</button>
+        )}
+        <button
+          onClick={() => setSheet("reports")}
+          disabled={!config || !graph}
+        >
+          Reports{store.hazards.length ? ` (${store.hazards.length})` : ""}
+        </button>
+      </footer>
+      {sheet && config && graph && (
+        <AppSheet
+          title={
+            sheet === "location"
+              ? "Set your location"
+              : sheet === "gps"
+                ? "Calibrate by location"
+                : sheet === "reports"
+                  ? "Hazard reports"
+                  : "More options"
+          }
+          onClose={() => setSheet(null)}
+        >
+          {sheet === "location" && (
+            <LocationChooser
+              config={config}
+              graph={graph}
               floor={floor}
-              graph={routeGraph}
-              path={result?.path ?? []}
-              user={user}
-              points={overlayPoints}
+              initialId={lastPointId}
+              hasGpsAlignment={!!calibration}
+              onChoose={chooseLocation}
             />
           )}
-          {!graph && (
-            <p className="empty-state">
-              This building needs a surveyed navigation graph. Add measured
-              floors, exits and stair connections using the supplied graph
-              maker, then set the graph path in Building setup.
-            </p>
+          {sheet === "gps" && (
+            <GpsLocationSetup
+              config={config}
+              graph={graph}
+              floor={floor}
+              saved={calibration}
+              onApply={applyCalibration}
+              onClear={() => {
+                stopGps();
+                try {
+                  localStorage.removeItem(calibrationKey(config));
+                } catch {
+                  /* Session state is still cleared. */
+                }
+                setCalibration(null);
+                setMessage("Saved GPS calibration cleared.");
+              }}
+            />
           )}
-          {graph && (
+          {sheet === "reports" && (
             <>
-              <label>
-                Choose your approximate location
-                <select
-                  value={modelRoute ? "model" : (nodeId ?? "")}
-                  onChange={(e) => manualLocation(Number(e.target.value))}
-                >
-                  <option value="" disabled>
-                    Choose a known place
-                  </option>
-                  {modelRoute && (
-                    <option value="model" disabled>
-                      Selected point in the model
-                    </option>
-                  )}
-                  {Object.entries(graph.zones)
-                    .filter(([key]) => graph.nodes[key][2] === floor)
-                    .map(([key, tag]) => (
-                      <option key={key} value={key}>
-                        {tag.label}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <div className="status-card">
-                <h2>{label}</h2>
-                <p role="status">{status}</p>
-                {estimate && (
-                  <p className="status-line">
-                    {floorLabel(config, currentFloor)} · Estimated uncertainty ±
-                    {(
-                      estimate.uncertaintyM +
-                      Math.max(0, now - estimate.timestamp) / 50000
-                    ).toFixed(1)}{" "}
-                    m
-                    {modelRoute
-                      ? " · Manually placed in the model"
-                      : estimate.requiresFloorScan
-                        ? " · QR confirmation needed"
-                        : ""}
-                  </p>
-                )}
-                {!modelRoute && (
-                  <button
-                    className="secondary-button"
-                    onClick={() => void compass.enable()}
-                  >
-                    Enable compass for calibration
-                  </button>
-                )}
-                <p className="status-line">
-                  {compass.status}{" "}
-                  {modelRoute
-                    ? modelHeadingOffset === null
-                      ? "· model facing direction not set"
-                      : "· model facing direction set manually"
-                    : headingSamples.length > 0
-                      ? `· heading calibrated from ${headingSamples.length} anchor(s)`
-                      : ""}
-                </p>
-                {!modelRoute && (
-                  <button
-                    className="secondary-button"
-                    onClick={() => {
-                      setMode("qr");
-                      setPendingScan(null);
-                    }}
-                  >
-                    Recalibrate here
-                  </button>
-                )}
-                {pendingScan && (
-                  <button
-                    onClick={() =>
-                      qrUpdate(
-                        pendingScan.nodeId,
-                        pendingScan.label,
-                        1,
-                        0,
-                        null,
-                        pendingScan.details,
-                        true,
-                      )
-                    }
-                  >
-                    I moved to this location — accept scan
-                  </button>
-                )}
-              </div>
-              <div className="mode-toggle">
-                <button
-                  className={mode === "qr" ? "active" : ""}
-                  onClick={() => setMode("qr")}
-                >
-                  Scan QR
-                </button>
-                <button
-                  className={mode === "ocr" ? "active" : ""}
-                  onClick={() => setMode("ocr")}
-                >
-                  Read signage
-                </button>
-                <button
-                  className={mode === "navigate" ? "active" : ""}
-                  onClick={() => setMode("navigate")}
-                  disabled={!estimate}
-                >
-                  Camera guide
-                </button>
-              </div>
-              {mode === "qr" && (
-                <QRAndCrowdRecognizer
-                  key={`qr-${id}`}
+              {estimate ? (
+                <HazardReport
                   config={config}
                   graph={graph}
-                  currentFloor={floor}
-                  onLocationUpdate={qrUpdate}
+                  position={estimate.position}
+                  floor={floor}
+                  heading={null}
+                  onCreate={store.create}
                 />
+              ) : (
+                <p>Set your location before reporting a hazard.</p>
               )}
-              {mode === "ocr" && (
-                <ZoneRecognizer
-                  key={`sign-${id}`}
-                  graph={graph}
-                  currentFloor={floor}
-                  onZoneFound={(n, l) => manualLocation(n, "sign", l)}
-                />
-              )}
-              {mode === "navigate" && (
-                <CameraNavigation
-                  key={`camera-${id}`}
-                  config={config}
-                  graph={routeGraph ?? graph}
-                  path={result?.path ?? null}
-                  graphPosition={estimate?.position ?? null}
-                  currentFloor={currentFloor}
-                  instruction={result?.fallback ? null : instruction}
-                  headingOffset={headingOffset}
-                  compassHeading={
-                    compass.reading.current &&
-                    now - compass.reading.current.at < 3000
-                      ? compass.heading
-                      : null
-                  }
-                  compassStatus={compass.status}
-                  onEnableCompass={compass.enable}
-                  modelBased={modelRoute}
-                  modelAligned={modelHeadingOffset !== null}
-                  onAlignModel={alignModel}
-                  onVideoReady={setVideo}
-                  onConfirmWaypoint={
-                    modelRoute && waypointId !== undefined && !result?.fallback
-                      ? confirmWaypoint
-                      : undefined
-                  }
-                  nextWaypointLabel={
-                    waypointId !== undefined && routeGraph
-                      ? routeGraph.zones[waypointId]?.label
-                      : undefined
-                  }
-                />
-              )}
-              {modelRoute && result?.path && (
-                <section
-                  className="status-card"
-                  aria-label="Model route progress"
-                >
-                  <h2>Follow the model route</h2>
-                  <p>
-                    Destination: main entrance on the 1st floor (modeled
-                    assumption). Green line in 3D: your route. Blue dot: your
-                    position. Your position advances when you confirm each
-                    point.
-                  </p>
-                  {waypointId !== undefined && routeGraph && (
-                    <>
-                      <p>
-                        Next:{" "}
-                        <strong>
-                          {routeGraph.zones[waypointId]?.label ??
-                            "Clear aisle point"}
-                        </strong>{" "}
-                        · {floorLabel(config, routeGraph.nodes[waypointId][2])}
-                        {estimate &&
-                        routeGraph.nodes[waypointId][2] !== estimate.floor
-                          ? " · Take the modeled stairs to this floor"
-                          : ""}
-                      </p>
-                      <button
-                        onClick={confirmWaypoint}
-                        disabled={result.fallback}
-                      >
-                        I have reached this waypoint
-                      </button>
-                    </>
-                  )}
-                  {waypointId === undefined && (
-                    <p>You have reached the modeled entrance.</p>
-                  )}
-                  <p className="status-line">
-                    Manual guidance using estimated geometry. The camera does
-                    not track your walking position.
-                  </p>
-                </section>
-              )}
-              {estimate && (
-                <>
-                  <PassiveStairProgress
-                    key={`stairs-${id}`}
-                    expectingStairSegment={expectingStairs}
-                    onStairSegmentConfirmed={handleStairs}
-                    onStep={handleStep}
-                    stepThreshold={config.settings.qr.stepThreshold}
-                  />
-                  <HazardReport
-                    graph={graph}
-                    config={config}
-                    position={estimate.position}
-                    floor={estimate.floor}
-                    heading={modelRoute ? null : heading}
-                    onCreate={store.create}
-                  />
-                  <HazardScanner
-                    video={video}
-                    config={config}
-                    graph={graph}
-                    position={estimate.position}
-                    floor={estimate.floor}
-                    heading={modelRoute ? null : heading}
-                    enabled={!modelRoute && navigating && mode === "navigate"}
-                    onCreate={store.create}
-                  />
-                </>
-              )}
-              {result?.fallback && (
-                <p role="alert" className="safety-note">
-                  <strong>All mapped routes are blocked.</strong> This fallback
-                  crosses reported hazards (
-                  {result.hazardIds
-                    .map(
-                      (hid) =>
-                        store.hazards.find((h) => h.id === hid)?.type ??
-                        "unknown",
-                    )
-                    .join(", ")}
-                  ). Follow official procedures and staff instructions.
-                </p>
-              )}
-              {estimate && !result?.path && (
-                <p role="alert" className="status-warning">
-                  No connected route to a mapped exit. Follow official signs and
-                  staff instructions.
-                </p>
-              )}
-              {estimate && result?.path && (
-                <VoiceGuide
-                  key={`voice-${id}`}
-                  instruction={result.fallback ? null : instruction}
-                  config={config}
-                  event={voiceEvent}
-                  enabled={navigating}
-                  onStart={() => {
-                    setNavigating(true);
-                    setMode("navigate");
-                    announcedPath.current = result.path;
-                    lastRoute.current = "";
-                  }}
-                />
-              )}
-              {navigating && (
-                <button
-                  className="secondary-button"
-                  onClick={() => setNavigating(false)}
-                >
-                  Stop navigation
-                </button>
-              )}
+              <p role="status" className="status-line">
+                {store.status}
+              </p>
+              <HazardList
+                hazards={store.hazards}
+                onAction={store.act}
+                floorNames={floorNames}
+              />
             </>
           )}
-          <p className="status-line" role="status">
-            {store.status}
-          </p>
-          <HazardList
-            hazards={store.hazards}
-            onAction={store.act}
-            floorNames={Object.fromEntries(
-              config.floors.map((f) => [f.index, floorLabel(config, f.index)]),
-            )}
-          />
-        </>
+          {sheet === "more" && (
+            <div className="navigation-more">
+              <p>
+                Model and GPS positions are estimates. Follow official
+                evacuation signs and staff instructions.
+              </p>
+              <p>
+                GPS uses two named locations to fit position, scale and
+                direction. It does not determine your floor.
+              </p>
+              <a href="/admin/alignment">Building model tools</a>
+              <a href="/admin/hazards">Hazard administration</a>
+              <a href={config.glb ?? undefined} download>
+                Download current model
+              </a>
+              <a href={`/models/${config.id}-rooms-bundle.zip`} download>
+                Download model bundle
+              </a>
+            </div>
+          )}
+        </AppSheet>
       )}
     </main>
   );

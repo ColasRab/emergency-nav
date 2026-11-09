@@ -37,6 +37,10 @@ export default function CameraNavigation({
   onVideoReady,
   onConfirmWaypoint,
   nextWaypointLabel,
+  compact = false,
+  locationBasis,
+  fallbackHeading = 180,
+  modelPerMeter = 1,
 }: {
   graph: NavGraph;
   path: number[] | null;
@@ -54,6 +58,10 @@ export default function CameraNavigation({
   onVideoReady?: (video: HTMLVideoElement | null) => void;
   onConfirmWaypoint?: () => void;
   nextWaypointLabel?: string;
+  compact?: boolean;
+  locationBasis?: string;
+  fallbackHeading?: number;
+  modelPerMeter?: number;
 }) {
   const video = useRef<HTMLVideoElement>(null),
     stream = useRef<MediaStream | null>(null),
@@ -65,6 +73,7 @@ export default function CameraNavigation({
   const [cameraStatus, setCameraStatus] = useState("Camera is off"),
     [facing, setFacing] = useState(180),
     [live, setLive] = useState(false),
+    [cameraError, setCameraError] = useState(false),
     [pendingCamera, setPendingCamera] = useState(false),
     [expanded, setExpanded] = useState(false),
     [viewportSize, setViewportSize] = useState({ width: 1000, height: 600 });
@@ -102,8 +111,10 @@ export default function CameraNavigation({
     };
   }, [expanded]);
   async function startCamera() {
+    if (compact) void onEnableCompass();
     const request = ++cameraRequest.current;
     setPendingCamera(true);
+    setCameraError(false);
     try {
       stream.current?.getTracks().forEach((t) => t.stop());
       const next = await navigator.mediaDevices.getUserMedia({
@@ -115,6 +126,19 @@ export default function CameraNavigation({
         return;
       }
       stream.current = next;
+      for (const track of next.getVideoTracks())
+        track.addEventListener(
+          "ended",
+          () => {
+            if (alive.current && stream.current === next) {
+              setLive(false);
+              setCameraError(true);
+              setCameraStatus("Camera stopped. Model preview active.");
+              callbacks.current.onVideoReady?.(null);
+            }
+          },
+          { once: true },
+        );
       if (video.current) {
         video.current.srcObject = next;
         await video.current.play();
@@ -125,12 +149,13 @@ export default function CameraNavigation({
     } catch (e) {
       if (!alive.current || cameraRequest.current !== request) return;
       setLive(false);
+      setCameraError(true);
       stream.current?.getTracks().forEach((track) => track.stop());
       callbacks.current.onVideoReady?.(null);
       setCameraStatus(
-        e instanceof Error
-          ? e.message
-          : "Camera unavailable. Follow the text route.",
+        e instanceof DOMException && e.name === "NotAllowedError"
+          ? "Camera permission denied. The model preview remains available."
+          : "Camera unavailable. The model preview remains available.",
       );
     } finally {
       if (alive.current && cameraRequest.current === request)
@@ -143,6 +168,7 @@ export default function CameraNavigation({
     if (video.current) video.current.srcObject = null;
     callbacks.current.onVideoReady?.(null);
     setPendingCamera(false);
+    setCameraError(false);
     setLive(false);
     setCameraStatus("Model preview active");
   }
@@ -180,8 +206,15 @@ export default function CameraNavigation({
       ? normalizeSignedDegrees(target.bearing - compassHeading - headingOffset)
       : null;
   const place = useMemo(
-    () => describeModelPlace(config, graphPosition, currentFloor, graph),
-    [config, graphPosition, currentFloor, graph],
+    () =>
+      describeModelPlace(
+        config,
+        graphPosition,
+        currentFloor,
+        graph,
+        1 / modelPerMeter,
+      ),
+    [config, graphPosition, currentFloor, graph, modelPerMeter],
   );
   const modelHeading =
     compassHeading !== null && (!modelBased || modelAligned)
@@ -189,8 +222,12 @@ export default function CameraNavigation({
         ? compassHeading + headingOffset
         : config.georef
           ? compassHeading + headingOffset - config.georef.rotationDeg + 180
-          : facing
-      : facing;
+          : compact
+            ? fallbackHeading
+            : facing
+      : compact
+        ? fallbackHeading
+        : facing;
   const projectedRoute = useMemo(
     () =>
       live && angle !== null && place.position
@@ -204,6 +241,7 @@ export default function CameraNavigation({
             place.position,
             modelHeading,
             viewportSize.width / viewportSize.height,
+            1.6 * modelPerMeter,
           )
         : [],
     [
@@ -217,18 +255,23 @@ export default function CameraNavigation({
       modelHeading,
       target?.pathIndex,
       viewportSize,
+      modelPerMeter,
     ],
   );
   return (
-    <section className="recognizer-panel camera-guide-panel">
-      <div className="camera-guide-heading">
-        <div>
-          <p className="eyebrow">Navigate from the model</p>
-          <h2>Camera navigation</h2>
+    <section
+      className={`recognizer-panel camera-guide-panel ${compact ? "compact-camera-guide" : ""}`}
+    >
+      {!compact && (
+        <div className="camera-guide-heading">
+          <div>
+            <p className="eyebrow">Navigate from the model</p>
+            <h2>Camera navigation</h2>
+          </div>
+          <span className="estimate-badge">Estimated position</span>
         </div>
-        <span className="estimate-badge">Estimated position</span>
-      </div>
-      {modelBased && (
+      )}
+      {!compact && modelBased && (
         <div className="model-camera-setup">
           <h2>Face a direction in the model</h2>
           <p>
@@ -344,9 +387,14 @@ export default function CameraNavigation({
             <i />
             {live ? "Live camera" : "Model preview"}
           </span>
-          <button className="hud-action" onClick={() => setExpanded((v) => !v)}>
-            {expanded ? "Close expanded camera" : "Expand camera view"}
-          </button>
+          {!compact && (
+            <button
+              className="hud-action"
+              onClick={() => setExpanded((v) => !v)}
+            >
+              {expanded ? "Close expanded camera" : "Expand camera view"}
+            </button>
+          )}
           <button
             className="hud-action"
             disabled={pendingCamera}
@@ -359,6 +407,11 @@ export default function CameraNavigation({
                 : "Use camera"}
           </button>
         </div>
+        {compact && cameraError && (
+          <p className="compact-camera-error" role="alert">
+            {cameraStatus}
+          </p>
+        )}
         <div className="camera-crosshair" aria-hidden="true">
           <i />
         </div>
@@ -380,11 +433,17 @@ export default function CameraNavigation({
           <strong>
             {target
               ? instructionText(target, "en", config)
-              : "Choose your current location to preview a route."}
+              : "Set your location to start directions."}
           </strong>
           <small>
             {angle === null
-              ? "Set facing direction for the camera arrow"
+              ? compact
+                ? !graphPosition
+                  ? "Choose where you are standing"
+                  : !modelAligned
+                    ? "Allow compass access or calibrate GPS"
+                    : "Waiting for compass direction"
+                : "Set facing direction for the camera arrow"
               : "Follow the next modeled waypoint"}
           </small>
         </div>
@@ -407,9 +466,10 @@ export default function CameraNavigation({
           </span>
           {place.distances && <small>{place.distances}</small>}
           <div className="estimated-place-basis">
-            {modelBased
-              ? "From selected model point"
-              : "From last location update"}
+            {locationBasis ??
+              (modelBased
+                ? "From selected model point"
+                : "From last location update")}
           </div>
           {onConfirmWaypoint && (
             <button
@@ -422,30 +482,36 @@ export default function CameraNavigation({
           )}
         </section>
       </div>
-      <div className="button-row">
-        <button onClick={startCamera} disabled={pendingCamera}>
-          Start navigation camera
-        </button>
-        {!modelBased && (
-          <button onClick={() => void onEnableCompass()}>Enable compass</button>
-        )}
-      </div>
-      <p role="status" className="status-line">
-        {cameraStatus} · {compassStatus}
-        {compassHeading === null
-          ? " · Direction arrow waiting for a fresh compass reading"
-          : ""}
-      </p>
-      <p className="status-line">
-        The location label is calculated from your point in the model. The
-        camera does not recognize your room or track your walking position.
-        Confirm waypoints to move the estimate.
-      </p>
-      {!config.georef && !modelBased && (
-        <p className="status-warning">
-          Choose a starting point inside a room to use manual model alignment
-          for the camera guide.
-        </p>
+      {!compact && (
+        <>
+          <div className="button-row">
+            <button onClick={startCamera} disabled={pendingCamera}>
+              Start navigation camera
+            </button>
+            {!modelBased && (
+              <button onClick={() => void onEnableCompass()}>
+                Enable compass
+              </button>
+            )}
+          </div>
+          <p role="status" className="status-line">
+            {cameraStatus} · {compassStatus}
+            {compassHeading === null
+              ? " · Direction arrow waiting for a fresh compass reading"
+              : ""}
+          </p>
+          <p className="status-line">
+            The location label is calculated from your point in the model. The
+            camera does not recognize your room or track your walking position.
+            Confirm waypoints to move the estimate.
+          </p>
+          {!config.georef && !modelBased && (
+            <p className="status-warning">
+              Choose a starting point inside a room to use manual model
+              alignment for the camera guide.
+            </p>
+          )}
+        </>
       )}
     </section>
   );

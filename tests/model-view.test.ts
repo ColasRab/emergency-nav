@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildingSchema } from "../lib/buildings";
 import { parseGraph } from "../lib/graph";
-import { invertSimilarity } from "../lib/geo/transform";
+import { invertSimilarity, type Vec2 } from "../lib/geo/transform";
 import { roomPointPreset } from "../lib/navigation/roomStart";
 import {
   describeModelPlace,
@@ -15,6 +15,24 @@ const config = buildingSchema.parse(raw),
   marsden = config.rooms!.find((r) => r.label === "Marsden")!;
 
 describe("model-based camera view", () => {
+  it("converts model wall offsets using the GPS calibration's distance scale", () => {
+    const point: Vec2 = [marsden.rect[2] - 0.5, marsden.rect[1] + 0.5];
+    expect(describeModelPlace(config, point, 1, graph, 2).distances).toContain(
+      "1.0 m from back",
+    );
+  });
+  it("uses the calibrated horizontal scale for the camera route's eye height", () => {
+    const segment: [Vec2, Vec2][] = [
+      [
+        [0, -5],
+        [0, -10],
+      ],
+    ];
+    const standard = projectModelRoute(segment, [0, 0], 0, 1, 1.6),
+      scaled = projectModelRoute(segment, [0, 0], 0, 1, 0.8);
+    expect(scaled[0][0][1] - 420).toBeCloseTo((standard[0][0][1] - 420) / 2);
+    expect(scaled[0][0][0]).toBe(standard[0][0][0]);
+  });
   it("describes the selected corner using the model coordinate and the actual floor", () => {
     const place = describeModelPlace(
       config,

@@ -1,127 +1,91 @@
-# Emergency Wayfinder
+# Wayfinder
 
-Indoor navigation for the Admin and Ynares buildings, with 3D scan previews, surveyed QR positioning, speech guidance and floor-scoped hazard routing.
+Indoor navigation for the Admin and Ynares buildings. The main page fits one camera/model window with a top-down map, an estimated-location card, building/floor selectors and the essential controls. Location setup, GPS calibration, reports and advanced model tools open in panels.
 
-## Reconstructed rooms from the supplied floor plan
+## Use the app
 
-The app now opens estimated room models for Admin and all three Ynares floors. Room cards and 3D labels reproduce the supplied plan; use **Original scan** for comparison, the floor selector for each level, and **Show all floors** for the full Ynares building. Rooms include illustrative furniture, doors, windows, corridors and the end stairwells shown in the plan. The original scans remain unchanged.
+1. Select the building and the floor you are physically on.
+2. For a known starting point, select **Set location**, choose a room and a place such as **Marsden · Right door**, then select **Use this location**. Corners and aisle positions are also available.
+3. To calibrate GPS, select **Calibrate GPS**. Stand at **Marsden · Right door** and record the first GPS point. Walk to **Marsden · Left door** and record the second point. Review the distance ratio and reported GPS accuracy, then select **Use this calibration**.
+4. GPS tracking starts after calibration. Subsequent GPS readings update the map marker, estimated room/place, route and camera view. **Stop GPS** freezes the last location; **Use GPS** resumes using the saved calibration.
+5. Select **Use camera** to switch from the first-person model preview to live video. Allow camera and compass access. **Start navigation** enables spoken directions; **Mute** and **Voice settings** remain available in the bottom bar.
 
-Ynares uses the user's measured floor heights. Horizontal dimensions, Admin's height, doorway positions and the central entrance are explicitly estimated. Download a self-contained GLB or a complete OBJ/material/texture ZIP from **Dimensions and assumptions** below the room cards. Regenerate models and their preview graphs with `npm run models:rooms`; edit `scripts/room-layouts.json` to change the assumptions. Regeneration resets geographic placement and verification fields.
+Choose floors manually. Changing floor stops GPS and clears the old position; select **Use GPS** again on the selected floor. The horizontal building calibration can be reused across its floors. Changing building selects that building's own saved calibration.
 
-See [the reconstruction report](reports/room-reconstruction.md) for room lists, dimension assumptions, exports and validation. The older scan graph is retained as `public/nav_graph.json`; the active app now uses the estimated room-model graphs in `public/graphs/`.
+QR calibration has been removed from the active app. The former `/admin/anchors` URL redirects to GPS location setup. Legacy QR geometry utilities remain in the repository for compatibility, without a scanner or sticker workflow on the main page.
 
-**Current status:** the software is implemented and tested locally. The supplied scans and existing graph are **not surveyed deployment data**. Real floor elevations, measured scale, control points, actual exits and QR placements must be verified before using the app for physical guidance. Follow official evacuation signs and staff instructions.
+## How the two-point GPS alignment works
 
-## Start from a point inside a room
+Each named location has coordinates in the reconstructed model. The app records the phone's latitude, longitude, reported accuracy and timestamp at two distinct locations on the same floor. It calculates:
 
-For the Marsden example, choose **Ynares Building → 2nd floor → Marsden → Back right → Use this starting point**. You can also tap the room plan or enter distances from its left and back walls. The point must be clear of modeled walls and furniture. The green line in 3D follows the model's doors, corridor and stairs to the assumed first-floor entrance; the blue dot marks your selected position. The room diagram shows its part of the route in blue.
+`model metres per GPS metre = model separation / GPS separation`
 
-The camera guide opens after selecting a point. Enable the compass, hold the phone toward a wall identified in the room plan, choose that direction and press **Set this facing direction**, then start the navigation camera. The arrow turns with the phone. Press **I have reached this waypoint** only after physically reaching the next point, including stair landings. Choose **Start navigation** for spoken directions.
+The first point fixes translation, and the two-point baseline fixes scale and direction. East/north GPS coordinates are converted into the model's coordinate frame with the correct handedness. New readings use this alignment. Navigation distances, wall offsets and the camera route's assumed eye height use the fitted horizontal scale.
 
-The camera view now uses a game-style layout: a top-down room/floor map in the upper left, directions over the main view, and an **Estimated location** card in the lower right. The card calculates room-relative descriptions such as **Marsden · Back right** from the current model coordinate. Before the camera starts, the background is a first-person view of the reconstructed model from that coordinate. **Use camera** switches to live video; **Use model preview** returns to the model. **Expand camera view** opens the full viewport; close it with the on-screen button or Escape. **Reached next point** advances the same waypoint used by the map, preview, route and location card.
+The app labels low confidence when the reported GPS uncertainty overlaps the baseline, or when the fitted scale is extreme. Nearly identical GPS readings and cross-floor calibration pairs are rejected. Tracking ignores readings older than 30 seconds or with reported accuracy worse than 50 metres. It matches usable estimates to modeled walkable areas; readings outside those areas keep the last position instead of teleporting the user across the building.
 
-The first-person preview assumes a 1.6 m eye height and a 60° vertical field of view. The live route overlay uses that assumed perspective and the aligned heading, and displays the next maneuver's model path. It is an estimated screen overlay; camera-based localization and real-world floor anchoring are not implemented. Preview captures are in `reports/game-camera-desktop.png` and `reports/game-camera-mobile.png`; the live-mode test capture uses a clearly labeled synthetic camera feed.
+**Calibration does not improve the phone's GPS precision.** Indoor GPS can be too noisy to distinguish nearby doors or room corners. Two points fit a transform but do not validate the rest of an estimated floor plan. The location card displays GPS-reported accuracy, and **Set location** remains available when GPS cannot be used.
 
-This is manual guidance using estimated model geometry. It does not detect where you are standing, track your walking position, or anchor a path to the real floor. Live world-tracked AR remains unimplemented. Camera and compass support still require validation on actual Android and iPhone devices; the browser checks use desktop Edge with a simulated compass and a phone-sized viewport.
+GPS records are saved only in this device's browser, separately for each building/model revision. They are not uploaded to Supabase or committed to GitHub. Use **Clear saved calibration** in the calibration panel to remove the current building's setup.
 
-Furniture footprints are exported from the same boxes that build the model. Runtime visibility paths include approximate 25 cm furniture clearance and 32.5 cm wall clearance, connect to modeled doorways, and retain door/room hazard handling.
+The camera overlay uses GPS/manual position, compass heading and an assumed camera perspective. The model preview uses a 1.6 m eye height; the live overlay assumes a 60° vertical field of view. Camera images do not identify the room or provide visual/inertial motion tracking, depth occlusion or world-anchored AR. Android and iPhone hardware validation remains outstanding.
 
 ## Run locally
 
-Use Node.js 24 or a compatible maintained Node release.
+Use Node.js 24 and npm. `package-lock.json` is the authoritative dependency lockfile.
 
 ```powershell
-npm install
+npm ci
 npm run dev
 ```
 
-Open [the app](http://localhost:3000). A production build uses `npm run build` followed by `npm run start`. Camera and motion access on a phone require HTTPS. Permissions are requested from buttons; manual location selection and text directions remain available when sensors are unavailable.
-
-The project now uses Next.js 16, React 19, TypeScript strict mode, Mapbox GL JS 3 and three.js. The framework and test dependencies were updated after the original versions failed the dependency audit.
+Open `http://localhost:3000`. Production uses `npm run build` and `npm run start`. Copy `.env.example` to `.env.local` and supply your own values. Phone camera, compass and location permissions require HTTPS.
 
 ## Deploy to Vercel
 
-Import `ColasRab/emergency-nav` into Vercel with the repository root (`./`) and production branch `master`. The project specifies Node.js 24, uses `package-lock.json`, and configures `npm ci` followed by `npm run build` in `vercel.json`. The obsolete pnpm lockfile was removed so the deployment uses the tested dependency set.
+The GitHub repository is `ColasRab/emergency-nav`, with production branch `master` and project root `./`. `vercel.json` selects Next.js, `npm ci` and `npm run build`; `package.json` selects Node.js 24. The live site is [emergency-nav-alpha.vercel.app](https://emergency-nav-alpha.vercel.app).
 
-Add the environment variables listed in `.env.example` to the Vercel project, using your values from the local `.env.local`: `NEXT_PUBLIC_MAPBOX_TOKEN`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `HAZARD_ADMIN_TOKEN`. Set them for Production and Preview if both should use shared hazards. The last two are server secrets. Keep their existing names and keep `.env.local` out of GitHub. Redeploy after changing environment values, since public values are embedded during the build.
+Configure the names from `.env.example` in Vercel for the environments you use:
 
-The existing Supabase schema must be initialized using `supabase/migrations/001_hazards.sql`. This has already been done for the supplied project. Missing server settings leave shared hazards unavailable; the model preview remains usable. Camera and compass permissions require the deployed HTTPS site and still need actual phone validation.
+- `NEXT_PUBLIC_MAPBOX_TOKEN`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` — server only
+- `HAZARD_ADMIN_TOKEN` — server only
 
-## Building setup
+Keep `.env.local` out of GitHub. Public environment values are embedded during builds, so redeploy after changing them. The supplied Supabase project has already had `supabase/migrations/001_hazards.sql` applied.
 
-- `/admin/alignment`: inspect scans, fit at least three non-collinear ground control points, fit graph/model correspondences, edit measured floor data, and export building configuration.
-- `/admin/anchors`: raycast wall anchors, check wall normals and mount heights, export `anchors.json`, download sticker PNGs, printable sheets and a placement checklist.
-- `/admin/hazards`: review, confirm, dismiss and expire hazards; persistent closures require the server's admin access token.
+## Models and estimates
 
-Browser setup changes are drafts stored on that device. Export the reviewed files to `public/models/admin.json`, `public/models/ynares.json` and `public/models/anchors.json` for deployment. Keep the configuration IDs and graph paths building-specific.
+The active room reconstructions reproduce the supplied floor plan, with modeled doors, furniture, corridors, fences and stairs. Admin has Stock Room, Euler, Admin Office, SHS Com Lab, Computer Lab and IT Hub. Ynares has three floors, including Marsden on the second floor. **More options** contains model downloads and advanced building tools; the main page stays focused on navigation.
 
-Admin's OBJ and PLY are alternate exports of the **Admin Building**. The larger OBJ in `C:/Users/colas/Documents/emergency-navigation` is **Ynares**. Its original material and texture were not supplied, so the scan-reference view is untextured. Reconstructed rooms use separate estimated geometry and their own colors/labels. Real building coordinates, exits and QR anchors still require a physical survey; the central entrance in the reconstructed preview is explicitly assumed.
+Ynares uses confirmed floor-to-floor heights of 3.095 / 3.05 / 2.84 m and relative walking elevations 0 / 3.095 / 6.145 m. Slabs of 0.36 / 0.17 / 0.16 m are already included in those spans. Horizontal dimensions, furniture, door positions, Admin's height and the central entrance are estimated. The sole current destination is the assumed central ground-floor entrance. Follow official evacuation signs and staff instructions.
 
-`lib/geo/transform.ts` contains runtime coordinate conversions. In a right-handed Y-up model, `rotationDeg = 0` maps model +Z to north and +X to west; a positive geographic rotation turns +Z clockwise from north. Graph-to-model rotation is documented in that module. Use the alignment preview to verify the fitted orientation.
-
-## Model pipeline
-
-Original scans remain unchanged. The manifest records their actual local paths and explicit texture selection:
+Room-model source: `scripts/room-layouts.json`. Regenerate GLB, OBJ/MTL/textures, metadata, graphs and download bundles with:
 
 ```powershell
-npm run models:prepare
+npm run models:rooms
 ```
 
-Edit `scripts/model-manifest.json` with the **measured** source up axis, meters per unit, origin and floor intervals. Match these settings when generating a graph. With no surveyed floors, the preview is named `unassigned_scan`. With floor intervals supplied, triangles are clipped at slab boundaries with interpolated UVs and normals, then exported as `floor_0`, `floor_1`, etc. The renderer shows the active floor, fades lower floors and hides upper floors.
+Regeneration replaces estimated building files and resets survey verification/geographic alignment. Changing the model revision invalidates its saved GPS calibration. Original scan GLBs remain at `public/models/admin.glb` and `public/models/ynares.glb`; the original `public/nav_graph.json` is retained separately. The scans are not registered to the room reconstruction. Original Ynares materials/texture were not supplied.
 
-The pipeline preserves Admin's UV atlas, converts its texture to WebP, simplifies geometry within a configured error bound and uses meshopt compression. Small scan fragments and holes still require human inspection; no automatic cleanup is treated as a structural survey. Source assets provide the full-resolution archive.
+The original-scan conversion pipeline is `npm run models:prepare`, configured by `scripts/model-manifest.json`. The Python graph tools and survey examples remain under `scripts/`, with copies alongside the original project at `C:/Users/colas/Documents/emergency-navigation`. Those survey templates require real measurements and exits before they generate deployment data.
 
-See `reports/asset-inspection.json`, `reports/phase-0-findings.md` and `reports/model-conversion.json`. Use at least three matched model/lng-lat points per building; target fit RMS below 1.5 m, and recheck points if RMS exceeds 3 m. Mapbox rendering follows the [official custom 3D model example](https://docs.mapbox.com/mapbox-gl-js/example/add-3d-model/).
+## Reports and voice
 
-## Python JSON maker
+**Reports** opens observed-hazard reporting and the current building's shared reports. Next.js API routes and Supabase provide building/floor scope, confirmed closures, expiry, votes, offline queues and live updates. Server secrets stay in server environment variables. No camera frames or GPS calibration records are uploaded. Camera fire/smoke recognition is not enabled.
 
-The existing `main.py`, `tools.py`, OBJ and JSON in `C:/Users/colas/Documents/emergency-navigation` were preserved. A new `make_building_graph.py` and `survey-admin.example.json` were added alongside them. The repository copies live under `scripts/`.
+English and Filipino speech use device voices with captions, mute and volume settings. The previously mentioned external voice folder has not been supplied. `/admin/alignment` and `/admin/hazards` remain available through **More options**.
 
-Ynares measurements are now recorded in `public/models/ynares-measurements.json`. Its `survey-ynares.example.json` is available in both `scripts/` and the Python folder. Confirmed floor-to-floor spans are 3.095, 3.05 and 2.84 m; relative walking surfaces are 0, 3.095 and 6.145 m. The 0.36/0.17/0.16 m slab thicknesses are already included and must not be added again. Scan origin, up axis and scale still require matching to actual floor surfaces.
-
-Fill a copy of the survey template with measured scale, floor elevations, exits, unique zone locations and stair landing connections. Coordinates use the same normalized model space as the GLB pipeline. Example:
-
-```powershell
-& 'C:/Users/colas/Documents/emergency-navigation/.venv/Scripts/python.exe' scripts/build_graph.py scripts/survey-admin.json --out public/graphs/admin.json
-```
-
-Then set the building's `graph` to `/graphs/admin.json`. The template intentionally contains null measurements and no exits; running it unchanged fails instead of generating fictional exits. The maker exports `[x, z, floor]`, retains disconnected regions for inspection, prevents diagonal shortcuts through blocked grid corners, adds measured stair connectors, and writes an adjacent inspection report. Review unreachable nodes and walk all routes before setting `graphVerified`.
-
-For an older two-coordinate graph, `scripts/import_graph.py` requires an explicit `--floor`. Importing does not certify its exits, scale or topology. The original Python folder's JSON has no zone labels and a placeholder exit; do not deploy it directly.
-
-## Supabase hazards
-
-The supplied Mapbox and Supabase settings are stored in ignored `.env.local`. See `.env.example` for names. The server secret is used only in API routes. Never copy it into a `NEXT_PUBLIC_` variable. `HAZARD_ADMIN_TOKEN` is a separate generated local secret; enter its value in the hazard admin form when making persistent closures. It is not saved by that form.
-
-The supplied project has been initialized with `supabase/migrations/001_hazards.sql`. For another project, run that migration in its SQL editor and enable the same environment settings. It supplies read-only public access, server-only writes, private deduplicated votes and Realtime publication. The app also polls every four seconds and stores pending reports locally for reconnection. An offline retry retains the original expiry and cannot overwrite an existing record. Admin credentials are excluded from the offline queue.
-
-```powershell
-node --env-file=.env.local scripts/check-supabase.mjs --realtime
-```
-
-Crowd scanning uses COCO-SSD after temporal confirmation. **Fire/smoke detection is not enabled without validated trained weights.** A TF.js adapter is provided in `lib/hazards/detectors.ts`; configure compatible named outputs and supply it to `HazardScanner`. Fire, smoke, blocked doors, spills and debris can be reported manually. No camera frames or report photos are uploaded. Shared reports and route costs are scoped to building and floor; a stair closure affects its connector in both directions.
-
-Severity multipliers, TTLs, scan thresholds, QR sizes, FOV and voice distances are in the per-building settings. Hard automatic blocks require explicit confirmation; one camera frame cannot close a route. The blocked-everywhere case is clearly labeled as an unsafe-to-assume fallback, and directional/voice maneuver guidance pauses. Campus/public access policy and stronger abuse controls must be decided before public launch.
-
-## QR and voice
-
-Payloads use `NAV1|anchorId`; legacy zone labels remain approximate and never calibrate heading. A surveyed scan estimates the camera's offset from the sticker, rejects poor geometry/blur/motion, requires three agreeing frames, and checks implausible jumps. Measure the black code symbol, excluding its white quiet zone. Calibrate the rear camera at a measured 1.0 m. A printed sheet must preserve the stated symbol width and at least four white modules of border.
-
-Enable the compass before scanning to estimate heading offset. Step tracking increases uncertainty, and stair progress requires a fresh QR on the new floor. Anchor arrival disagreements are logged locally and repeated disagreement is flagged for re-survey. Accuracy values are estimates until field-validated.
-
-Voice uses device speech with English and Filipino phrase templates under `lib/voice/phrases/`. The requested external voice folder has not yet been supplied. Device language availability varies; captions, mute and repeat controls remain available. The camera arrow and voice consume the same next maneuver. Real iOS Safari and Android Chrome speech, compass, motion and QR behavior still require on-device tests.
-
-## Checks and field validation
+## Validation
 
 ```powershell
 npm run typecheck
 npm test
 npm run build
 npm run test:e2e
-& 'C:/Users/colas/Documents/emergency-navigation/.venv/Scripts/python.exe' tests/test_graph_maker.py
-python scripts/validate-position.py reports/checkpoint-template.csv
 ```
 
-Browser checks use installed Microsoft Edge and port 3010. They cover building changes, a two-session shared API simulation, offline reload, mobile overflow, setup pages, the live Supabase read endpoint and local scan rendering. They do not create fake hazards in the live database.
+Browser checks use installed Microsoft Edge and port 3010. They cover compact desktop/phone layouts, rendered model pixels, two-door GPS recording and live updates, saved calibration, poor/identical/denied GPS cases, camera cleanup, shared/offline reports and the live Supabase read endpoint. GPS coordinates and camera feeds in these checks are synthetic, not on-site measurements. No fake hazards are added to the live database.
 
-Fill at least ten measured checkpoints per building in `reports/checkpoint-template.csv`, using meters in one common frame and true-north headings. The validation script reports median, 95th percentile and heading errors. Empty template rows are not measurements. Targets: median position error <0.5 m, 95th percentile <1.5 m, and heading error <8 degrees. Review `reports/final-implementation-report.md` for what was tested and what remains unverified.
+See `reports/gps-location-calibration.md`, `reports/room-reconstruction.md` and `reports/final-implementation-report.md` for implementation details and limitations. Current screenshots are `reports/compact-navigation-desktop.png`, `reports/compact-navigation-mobile.png` and `reports/gps-calibration-points.png`.

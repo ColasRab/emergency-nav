@@ -12,7 +12,7 @@ export type PositionEstimate = {
   timestamp: number;
   lastScanAt: number | null;
   requiresFloorScan: boolean;
-  source: "qr" | "manual" | "sign" | "steps";
+  source: "qr" | "manual" | "sign" | "steps" | "gps";
 };
 export type HeadingSample = {
   anchorId: string;

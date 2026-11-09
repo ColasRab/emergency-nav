@@ -137,12 +137,13 @@ export function nextInstruction(
   config: BuildingConfig,
   heading: number | null = null,
   frame: "world" | "model" = "world",
+  metersPerModelUnit = 1,
 ): NextInstruction | null {
   if (!path.length) return null;
   const maneuvers = buildManeuvers(graph, path, config),
     scale =
       (config.graphToModel?.scale ?? 1) *
-      (frame === "model" ? 1 : (config.georef?.scale ?? 1));
+      (frame === "model" ? metersPerModelUnit : (config.georef?.scale ?? 1));
   const maneuver = maneuvers.find((m) => m.floor === floor);
   if (!maneuver) return null;
   const point = graph.nodes[maneuver.nodeId];

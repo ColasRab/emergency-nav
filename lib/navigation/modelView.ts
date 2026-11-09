@@ -21,6 +21,7 @@ export function describeModelPlace(
   position: Vec2 | null,
   floor: number,
   graph?: NavGraph,
+  metersPerModelUnit = 1,
 ): ModelPlace {
   const point = position ? modelPosition(config, position) : null,
     result: ModelPlace = {
@@ -48,18 +49,33 @@ export function describeModelPlace(
       row = fz < 1 / 3 ? "Back" : fz > 2 / 3 ? "Front" : "Middle",
       vertical =
         fz < 0.5
-          ? `${Math.max(0, z - z0).toFixed(1)} m from back`
-          : `${Math.max(0, z1 - z).toFixed(1)} m from front`,
+          ? `${(Math.max(0, z - z0) * metersPerModelUnit).toFixed(1)} m from back`
+          : `${(Math.max(0, z1 - z) * metersPerModelUnit).toFixed(1)} m from front`,
       horizontal =
         fx < 0.5
-          ? `${Math.max(0, x - x0).toFixed(1)} m from left`
-          : `${Math.max(0, x1 - x).toFixed(1)} m from right`;
+          ? `${(Math.max(0, x - x0) * metersPerModelUnit).toFixed(1)} m from left`
+          : `${(Math.max(0, x1 - x) * metersPerModelUnit).toFixed(1)} m from right`;
+    const orderedDoors = [...room.doors].sort((a, b) => b[0] - a[0]),
+      doorIndex = orderedDoors.findIndex(
+        (d) => Math.hypot(d[0] - x, d[1] - z) < 0.4,
+      ),
+      doorRegion =
+        doorIndex < 0
+          ? null
+          : orderedDoors.length === 1
+            ? "Door"
+            : doorIndex === 0
+              ? "Right door"
+              : doorIndex === orderedDoors.length - 1
+                ? "Left door"
+                : "Door";
     return {
       ...result,
       room,
       title: room.label,
       region:
-        row === "Middle" && side === "center" ? "Center" : `${row} ${side}`,
+        doorRegion ??
+        (row === "Middle" && side === "center" ? "Center" : `${row} ${side}`),
       distances: `~${vertical} · ~${horizontal}`,
     };
   }
@@ -139,8 +155,15 @@ export function projectModelRoute(
   position: Vec2,
   heading: number,
   aspect: number,
+  eyeHeightModel = 1.6,
 ): [Vec2, Vec2][] {
-  if (!Number.isFinite(aspect) || aspect <= 0 || !Number.isFinite(heading))
+  if (
+    !Number.isFinite(aspect) ||
+    aspect <= 0 ||
+    !Number.isFinite(heading) ||
+    !Number.isFinite(eyeHeightModel) ||
+    eyeHeightModel <= 0
+  )
     return [];
   const a = (heading * Math.PI) / 180,
     forward: Vec2 = [Math.sin(a), -Math.cos(a)],
@@ -154,7 +177,7 @@ export function projectModelRoute(
   };
   const screen = ([x, depth]: Vec2): Vec2 => [
     500 + (1000 * focalY * x) / (aspect * depth),
-    420 + (1000 * focalY * 1.6) / depth,
+    420 + (1000 * focalY * eyeHeightModel) / depth,
   ];
   return segments.flatMap(([p, q]) => {
     let start = local(p),

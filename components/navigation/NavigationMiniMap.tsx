@@ -59,15 +59,17 @@ export default function NavigationMiniMap({
         <span>
           <i /> {room ? room.label : config.name}
         </span>
-        <button
-          aria-label={
-            room ? "Show whole floor map" : "Zoom map to current room"
-          }
-          disabled={!place.room}
-          onClick={() => setScope(room ? "floor" : "room")}
-        >
-          {room ? "Floor" : "Room"}
-        </button>
+        {place.room && (
+          <button
+            aria-label={
+              room ? "Show whole floor map" : "Zoom map to current room"
+            }
+            disabled={!place.room}
+            onClick={() => setScope(room ? "floor" : "room")}
+          >
+            {room ? "Floor" : "Room"}
+          </button>
+        )}
       </header>
       <svg
         viewBox={`${bounds[0] - pad} ${bounds[1] - pad} ${width} ${height}`}
