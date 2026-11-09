@@ -1,0 +1,6 @@
+{
+  "models": [
+    {"id":"admin","source":"D:/Download/Admin buo/3DModel.obj","texture":"D:/Download/Admin buo/3DModel.jpg","upAxis":"Y","metersPerUnit":1,"origin":[0,0,0],"verified":false,"floors":[]},
+    {"id":"ynares","source":"C:/Users/colas/Documents/emergency-navigation/3DModel.obj","texture":null,"upAxis":"Y","metersPerUnit":1,"origin":[0,0,0],"verified":false,"floors":[]}
+  ]
+}

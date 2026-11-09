@@ -1,0 +1,74 @@
+{
+  "id": "ynares",
+  "name": "Ynares Building",
+  "glb": "/models/ynares.glb",
+  "graph": "/nav_graph.json",
+  "modelVerified": false,
+  "graphVerified": false,
+  "floorsVerified": false,
+  "floors": [
+    {
+      "index": 0,
+      "baseY": 0,
+      "height": 3
+    },
+    {
+      "index": 1,
+      "baseY": 3,
+      "height": 3
+    },
+    {
+      "index": 2,
+      "baseY": 6,
+      "height": 3
+    }
+  ],
+  "georef": null,
+  "graphToModel": null,
+  "settings": {
+    "crowd": {
+      "busy": 3,
+      "congested": 7,
+      "radiusM": 5,
+      "ttlMs": 600000
+    },
+    "hazards": {
+      "multipliers": [
+        2,
+        6
+      ],
+      "ttlMs": 1800000,
+      "confirmationFrames": 5,
+      "windowFrames": 8,
+      "confidence": 0.75,
+      "snapRadiusM": 4,
+      "switchSaving": 0.15,
+      "fallbackMultiplier": 100000
+    },
+    "qr": {
+      "fovDeg": 68,
+      "minSidePx": 80,
+      "maxAngleDeg": 60,
+      "minBlurVariance": 50,
+      "maxGyroDegS": 25,
+      "agreeM": 0.3,
+      "agreeDeg": 8,
+      "maxSpeedMS": 2,
+      "stepLengthM": 0.7,
+      "stepThreshold": 1.2,
+      "defaultSizeMm": 150,
+      "uncertaintyPerM": 0.1
+    },
+    "voice": {
+      "slightDeg": 15,
+      "turnDeg": 40,
+      "sharpDeg": 120,
+      "uTurnDeg": 165,
+      "advanceM": 15,
+      "immediateM": 3,
+      "cooldownMs": 8000,
+      "offRouteM": 4,
+      "offRouteMs": 3000
+    }
+  }
+}
