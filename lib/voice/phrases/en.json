@@ -1,0 +1,11 @@
+{
+ "start":"Starting route to the nearest mapped exit.",
+ "straight":"Continue for {distance} meters.",
+ "advance":"In {distance} meters, {action}.",
+ "now":"{action} now.",
+ "left":"turn left", "right":"turn right", "slight-left":"bear left", "slight-right":"bear right", "sharp-left":"turn sharply left", "sharp-right":"turn sharply right", "uturn":"turn around",
+ "stairs-up":"take the stairs up to Floor {floor}","stairs-down":"take the stairs down to Floor {floor}","door":"go through the door", "entrance":"go through the entrance", "exit":"continue to the exit", "arrival":"You have reached the mapped exit.",
+ "landmark":"Pass {landmark}.", "offroute":"You are off route. Recalculating.", "reroute":"Hazard ahead. Taking another route.",
+ "blocked":"All mapped routes are blocked. Follow official evacuation procedures. The displayed fallback crosses a reported hazard.",
+ "updated":"Position updated.","uncertain":"Location uncertain. Scan a nearby QR code.","floor":"Floor {floor}. Scan a QR code to confirm your location."
+}

@@ -12,6 +12,8 @@ const R = 6378137;
 const rad = Math.PI / 180;
 export function normalizeSignedDegrees(value: number): number { return ((value + 180) % 360 + 360) % 360 - 180; }
 export function bearing(dx: number, dz: number): number { return (Math.atan2(dx, dz) / rad + 360) % 360; }
+export function smoothBearing(previous:number|null,next:number,weight=.2):number{if(previous===null)return next;const x=(1-weight)*Math.cos(previous*rad)+weight*Math.cos(next*rad),y=(1-weight)*Math.sin(previous*rad)+weight*Math.sin(next*rad);return (Math.atan2(y,x)/rad+360)%360;}
+export function deviceHeading(event:{webkitCompassHeading?:number;alpha:number|null;absolute:boolean},screenAngle:number):number|null{const raw=typeof event.webkitCompassHeading==="number"?event.webkitCompassHeading:event.absolute&&event.alpha!==null?360-event.alpha:null;return raw===null||!Number.isFinite(raw)?null:((raw+screenAngle)%360+360)%360;}
 export function rotate([x, z]: Vec2, rotationDeg: number): Vec2 {
   const a = rotationDeg * rad;
   return [x * Math.cos(a) + z * Math.sin(a), -x * Math.sin(a) + z * Math.cos(a)];
