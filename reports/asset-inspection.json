@@ -1,0 +1,912 @@
+{
+  "models": [
+    {
+      "path": "D:\\Download\\Admin buo\\3DModel.obj",
+      "bytes": 12742488,
+      "vertices": 49412,
+      "faces": 97788,
+      "triangles": 97788,
+      "bbox": [
+        [
+          -9.686111,
+          -2.336021,
+          -4.397119
+        ],
+        [
+          9.711125,
+          0.399225,
+          -0.124213
+        ]
+      ],
+      "extent": [
+        19.397236,
+        2.735246,
+        4.272906
+      ],
+      "uvVertices": 79128,
+      "texturedFaces": 97788,
+      "materialFiles": {
+        "3DModel.mtl": true
+      },
+      "texture": "D:\\Download\\Admin buo\\3DModel.jpg",
+      "textureExists": true,
+      "textureResolution": [
+        2048,
+        2048
+      ],
+      "normalAreaByAxis": [
+        25.94071311934294,
+        51.99558532839895,
+        42.94426663115028
+      ],
+      "yHorizontalSurfaceHistogram": [
+        {
+          "baseY": -2.4,
+          "area": 0.004
+        },
+        {
+          "baseY": -2.3,
+          "area": 0.001
+        },
+        {
+          "baseY": -2.2,
+          "area": 0.001
+        },
+        {
+          "baseY": -2.1,
+          "area": 0.005
+        },
+        {
+          "baseY": -2.0,
+          "area": 0.0
+        },
+        {
+          "baseY": -1.9,
+          "area": 0.145
+        },
+        {
+          "baseY": -1.8,
+          "area": 0.861
+        },
+        {
+          "baseY": -1.7,
+          "area": 1.862
+        },
+        {
+          "baseY": -1.6,
+          "area": 2.219
+        },
+        {
+          "baseY": -1.5,
+          "area": 2.272
+        },
+        {
+          "baseY": -1.4,
+          "area": 3.81
+        },
+        {
+          "baseY": -1.3,
+          "area": 5.142
+        },
+        {
+          "baseY": -1.2,
+          "area": 0.595
+        },
+        {
+          "baseY": -1.1,
+          "area": 0.829
+        },
+        {
+          "baseY": -1.0,
+          "area": 1.615
+        },
+        {
+          "baseY": -0.9,
+          "area": 0.419
+        },
+        {
+          "baseY": -0.8,
+          "area": 0.21
+        },
+        {
+          "baseY": -0.7,
+          "area": 0.241
+        },
+        {
+          "baseY": -0.6,
+          "area": 0.394
+        },
+        {
+          "baseY": -0.5,
+          "area": 1.37
+        },
+        {
+          "baseY": -0.4,
+          "area": 1.984
+        },
+        {
+          "baseY": -0.3,
+          "area": 4.923
+        },
+        {
+          "baseY": -0.2,
+          "area": 0.517
+        },
+        {
+          "baseY": -0.1,
+          "area": 0.202
+        },
+        {
+          "baseY": 0.0,
+          "area": 0.172
+        },
+        {
+          "baseY": 0.1,
+          "area": 0.105
+        },
+        {
+          "baseY": 0.2,
+          "area": 0.085
+        },
+        {
+          "baseY": 0.3,
+          "area": 0.069
+        },
+        {
+          "baseY": 0.4,
+          "area": 0.0
+        }
+      ],
+      "ySurfacePeaks": [
+        {
+          "baseY": -1.3,
+          "horizontalArea": 5.142
+        },
+        {
+          "baseY": -0.3,
+          "horizontalArea": 4.923
+        },
+        {
+          "baseY": -1.4,
+          "horizontalArea": 3.81
+        },
+        {
+          "baseY": -1.5,
+          "horizontalArea": 2.272
+        },
+        {
+          "baseY": -1.6,
+          "horizontalArea": 2.219
+        },
+        {
+          "baseY": -0.4,
+          "horizontalArea": 1.984
+        },
+        {
+          "baseY": -1.7,
+          "horizontalArea": 1.862
+        },
+        {
+          "baseY": -1.0,
+          "horizontalArea": 1.615
+        },
+        {
+          "baseY": -0.5,
+          "horizontalArea": 1.37
+        },
+        {
+          "baseY": -1.8,
+          "horizontalArea": 0.861
+        },
+        {
+          "baseY": -1.1,
+          "horizontalArea": 0.829
+        },
+        {
+          "baseY": -1.2,
+          "horizontalArea": 0.595
+        }
+      ],
+      "units": "unverified",
+      "upAxis": "Y candidate; needs physical confirmation",
+      "buildingId": null
+    },
+    {
+      "path": "D:\\Download\\Admin buo\\AdvancedExport\\3DModel_Custom.ply",
+      "bytes": 8945317,
+      "vertices": 97165,
+      "faces": 39684,
+      "triangles": 78578,
+      "bbox": [
+        [
+          -9.62567,
+          0.14298397,
+          -2.3078732
+        ],
+        [
+          9.671429,
+          4.33744,
+          0.3652439
+        ]
+      ],
+      "extent": [
+        19.297099,
+        4.19445603,
+        2.6731171
+      ],
+      "uvVertices": 97165,
+      "texturedFaces": 39684,
+      "materialFiles": {},
+      "texture": "D:\\Download\\Admin buo\\AdvancedExport\\3DModel_Custom.jpg",
+      "textureExists": true,
+      "textureResolution": [
+        4096,
+        4096
+      ],
+      "normalAreaByAxis": [
+        21.321965475665753,
+        37.80301296252397,
+        45.70800493760132
+      ],
+      "yHorizontalSurfaceHistogram": [
+        {
+          "baseY": 0.1,
+          "area": 0.177
+        },
+        {
+          "baseY": 0.2,
+          "area": 0.026
+        },
+        {
+          "baseY": 0.3,
+          "area": 0.225
+        },
+        {
+          "baseY": 0.4,
+          "area": 0.133
+        },
+        {
+          "baseY": 0.5,
+          "area": 0.007
+        },
+        {
+          "baseY": 0.6,
+          "area": 0.016
+        },
+        {
+          "baseY": 0.7,
+          "area": 0.161
+        },
+        {
+          "baseY": 0.8,
+          "area": 1.581
+        },
+        {
+          "baseY": 0.9,
+          "area": 0.045
+        },
+        {
+          "baseY": 1.0,
+          "area": 0.123
+        },
+        {
+          "baseY": 1.1,
+          "area": 0.03
+        },
+        {
+          "baseY": 1.2,
+          "area": 0.116
+        },
+        {
+          "baseY": 1.3,
+          "area": 0.233
+        },
+        {
+          "baseY": 1.4,
+          "area": 0.26
+        },
+        {
+          "baseY": 1.5,
+          "area": 0.081
+        },
+        {
+          "baseY": 1.6,
+          "area": 0.498
+        },
+        {
+          "baseY": 1.7,
+          "area": 1.622
+        },
+        {
+          "baseY": 1.8,
+          "area": 1.96
+        },
+        {
+          "baseY": 1.9,
+          "area": 0.244
+        },
+        {
+          "baseY": 2.0,
+          "area": 0.061
+        },
+        {
+          "baseY": 2.1,
+          "area": 1.349
+        },
+        {
+          "baseY": 2.2,
+          "area": 4.801
+        },
+        {
+          "baseY": 2.3,
+          "area": 3.587
+        },
+        {
+          "baseY": 2.4,
+          "area": 0.361
+        },
+        {
+          "baseY": 2.5,
+          "area": 0.072
+        },
+        {
+          "baseY": 2.6,
+          "area": 0.066
+        },
+        {
+          "baseY": 2.7,
+          "area": 0.337
+        },
+        {
+          "baseY": 2.8,
+          "area": 0.129
+        },
+        {
+          "baseY": 2.9,
+          "area": 0.077
+        },
+        {
+          "baseY": 3.0,
+          "area": 0.026
+        },
+        {
+          "baseY": 3.1,
+          "area": 0.018
+        },
+        {
+          "baseY": 3.2,
+          "area": 0.0
+        },
+        {
+          "baseY": 3.3,
+          "area": 0.0
+        },
+        {
+          "baseY": 3.4,
+          "area": 0.003
+        },
+        {
+          "baseY": 3.5,
+          "area": 0.052
+        },
+        {
+          "baseY": 3.6,
+          "area": 0.031
+        },
+        {
+          "baseY": 3.7,
+          "area": 0.015
+        },
+        {
+          "baseY": 3.8,
+          "area": 0.016
+        },
+        {
+          "baseY": 3.9,
+          "area": 0.006
+        },
+        {
+          "baseY": 4.0,
+          "area": 0.02
+        },
+        {
+          "baseY": 4.1,
+          "area": 0.0
+        },
+        {
+          "baseY": 4.2,
+          "area": 0.001
+        },
+        {
+          "baseY": 4.3,
+          "area": 0.0
+        },
+        {
+          "baseY": 4.4,
+          "area": 0.0
+        }
+      ],
+      "ySurfacePeaks": [
+        {
+          "baseY": 2.2,
+          "horizontalArea": 4.801
+        },
+        {
+          "baseY": 2.3,
+          "horizontalArea": 3.587
+        },
+        {
+          "baseY": 1.8,
+          "horizontalArea": 1.96
+        },
+        {
+          "baseY": 1.7,
+          "horizontalArea": 1.622
+        },
+        {
+          "baseY": 0.8,
+          "horizontalArea": 1.581
+        },
+        {
+          "baseY": 2.1,
+          "horizontalArea": 1.349
+        },
+        {
+          "baseY": 1.6,
+          "horizontalArea": 0.498
+        },
+        {
+          "baseY": 2.4,
+          "horizontalArea": 0.361
+        },
+        {
+          "baseY": 2.7,
+          "horizontalArea": 0.337
+        },
+        {
+          "baseY": 1.4,
+          "horizontalArea": 0.26
+        },
+        {
+          "baseY": 1.9,
+          "horizontalArea": 0.244
+        },
+        {
+          "baseY": 1.3,
+          "horizontalArea": 0.233
+        }
+      ],
+      "units": "unverified",
+      "upAxis": "Y candidate; needs physical confirmation",
+      "buildingId": null
+    },
+    {
+      "path": "C:\\Users\\colas\\Documents\\emergency-navigation\\3DModel.obj",
+      "bytes": 286891783,
+      "vertices": 989689,
+      "faces": 1971338,
+      "triangles": 1971338,
+      "bbox": [
+        [
+          -3.789346,
+          -2.346226,
+          -8.523492
+        ],
+        [
+          1.615621,
+          2.330722,
+          5.139245
+        ]
+      ],
+      "extent": [
+        5.404967,
+        4.676948,
+        13.662737
+      ],
+      "uvVertices": 1113391,
+      "texturedFaces": 1971338,
+      "materialFiles": {
+        "3DModel.mtl": false
+      },
+      "texture": "C:\\Users\\colas\\Documents\\emergency-navigation\\3DModel.jpg",
+      "textureExists": false,
+      "textureResolution": null,
+      "normalAreaByAxis": [
+        101.40016133797121,
+        86.59149769237733,
+        63.976585935778054
+      ],
+      "yHorizontalSurfaceHistogram": [
+        {
+          "baseY": -2.4,
+          "area": 0.001
+        },
+        {
+          "baseY": -2.3,
+          "area": 0.0
+        },
+        {
+          "baseY": -2.2,
+          "area": 0.0
+        },
+        {
+          "baseY": -2.1,
+          "area": 0.0
+        },
+        {
+          "baseY": -2.0,
+          "area": 0.001
+        },
+        {
+          "baseY": -1.9,
+          "area": 0.158
+        },
+        {
+          "baseY": -1.8,
+          "area": 1.446
+        },
+        {
+          "baseY": -1.7,
+          "area": 6.255
+        },
+        {
+          "baseY": -1.6,
+          "area": 6.256
+        },
+        {
+          "baseY": -1.5,
+          "area": 5.018
+        },
+        {
+          "baseY": -1.4,
+          "area": 3.147
+        },
+        {
+          "baseY": -1.3,
+          "area": 0.586
+        },
+        {
+          "baseY": -1.2,
+          "area": 0.336
+        },
+        {
+          "baseY": -1.1,
+          "area": 0.053
+        },
+        {
+          "baseY": -1.0,
+          "area": 0.189
+        },
+        {
+          "baseY": -0.9,
+          "area": 0.473
+        },
+        {
+          "baseY": -0.8,
+          "area": 0.958
+        },
+        {
+          "baseY": -0.7,
+          "area": 1.932
+        },
+        {
+          "baseY": -0.6,
+          "area": 1.817
+        },
+        {
+          "baseY": -0.5,
+          "area": 3.445
+        },
+        {
+          "baseY": -0.4,
+          "area": 2.892
+        },
+        {
+          "baseY": -0.3,
+          "area": 0.589
+        },
+        {
+          "baseY": -0.2,
+          "area": 0.076
+        },
+        {
+          "baseY": -0.1,
+          "area": 0.031
+        },
+        {
+          "baseY": 0.0,
+          "area": 0.089
+        },
+        {
+          "baseY": 0.1,
+          "area": 0.125
+        },
+        {
+          "baseY": 0.2,
+          "area": 0.066
+        },
+        {
+          "baseY": 0.3,
+          "area": 0.058
+        },
+        {
+          "baseY": 0.4,
+          "area": 0.358
+        },
+        {
+          "baseY": 0.5,
+          "area": 0.097
+        },
+        {
+          "baseY": 0.6,
+          "area": 0.579
+        },
+        {
+          "baseY": 0.7,
+          "area": 0.5
+        },
+        {
+          "baseY": 0.8,
+          "area": 0.845
+        },
+        {
+          "baseY": 0.9,
+          "area": 0.075
+        },
+        {
+          "baseY": 1.0,
+          "area": 0.07
+        },
+        {
+          "baseY": 1.1,
+          "area": 0.034
+        },
+        {
+          "baseY": 1.2,
+          "area": 0.002
+        },
+        {
+          "baseY": 1.3,
+          "area": 0.0
+        },
+        {
+          "baseY": 1.4,
+          "area": 0.002
+        },
+        {
+          "baseY": 1.5,
+          "area": 0.075
+        },
+        {
+          "baseY": 1.6,
+          "area": 0.11
+        },
+        {
+          "baseY": 1.7,
+          "area": 0.303
+        },
+        {
+          "baseY": 1.8,
+          "area": 0.334
+        },
+        {
+          "baseY": 1.9,
+          "area": 1.718
+        },
+        {
+          "baseY": 2.0,
+          "area": 0.072
+        },
+        {
+          "baseY": 2.1,
+          "area": 0.031
+        },
+        {
+          "baseY": 2.2,
+          "area": 0.093
+        },
+        {
+          "baseY": 2.3,
+          "area": 0.012
+        },
+        {
+          "baseY": 2.4,
+          "area": 0.0
+        }
+      ],
+      "ySurfacePeaks": [
+        {
+          "baseY": -1.6,
+          "horizontalArea": 6.256
+        },
+        {
+          "baseY": -1.7,
+          "horizontalArea": 6.255
+        },
+        {
+          "baseY": -1.5,
+          "horizontalArea": 5.018
+        },
+        {
+          "baseY": -0.5,
+          "horizontalArea": 3.445
+        },
+        {
+          "baseY": -1.4,
+          "horizontalArea": 3.147
+        },
+        {
+          "baseY": -0.4,
+          "horizontalArea": 2.892
+        },
+        {
+          "baseY": -0.7,
+          "horizontalArea": 1.932
+        },
+        {
+          "baseY": -0.6,
+          "horizontalArea": 1.817
+        },
+        {
+          "baseY": 1.9,
+          "horizontalArea": 1.718
+        },
+        {
+          "baseY": -1.8,
+          "horizontalArea": 1.446
+        },
+        {
+          "baseY": -0.8,
+          "horizontalArea": 0.958
+        },
+        {
+          "baseY": 0.8,
+          "horizontalArea": 0.845
+        }
+      ],
+      "units": "unverified",
+      "upAxis": "Y candidate; needs physical confirmation",
+      "buildingId": null
+    }
+  ],
+  "graphs": [
+    {
+      "path": "public\\nav_graph.json",
+      "bytes": 355768,
+      "nodes": 1524,
+      "directedEdges": 10586,
+      "floors": [
+        0,
+        1,
+        2
+      ],
+      "nodeCoordinateLengths": [
+        3
+      ],
+      "exits": [
+        507,
+        0
+      ],
+      "zones": {
+        "507": {
+          "label": "Stairwell A - Floor 0",
+          "type": "stairs",
+          "gps": {
+            "lat": null,
+            "lon": null
+          }
+        },
+        "1015": {
+          "label": "Stairwell A - Floor 1 (top)",
+          "type": "stairs",
+          "gps": {
+            "lat": null,
+            "lon": null
+          }
+        },
+        "1523": {
+          "label": "Stairwell A - Floor 2",
+          "type": "stairs",
+          "gps": {
+            "lat": null,
+            "lon": null
+          }
+        },
+        "0": {
+          "label": "Stairwell B - Floor 0",
+          "type": "stairs",
+          "gps": {
+            "lat": null,
+            "lon": null
+          }
+        },
+        "508": {
+          "label": "Stairwell B - Floor 1 (top)",
+          "type": "stairs",
+          "gps": {
+            "lat": null,
+            "lon": null
+          }
+        },
+        "1016": {
+          "label": "Stairwell B - Floor 2",
+          "type": "stairs",
+          "gps": {
+            "lat": null,
+            "lon": null
+          }
+        },
+        "1": {
+          "label": "Hallway - Floor 0",
+          "type": "hallway",
+          "gps": {
+            "lat": null,
+            "lon": null
+          }
+        },
+        "509": {
+          "label": "Hallway - Floor 1",
+          "type": "hallway",
+          "gps": {
+            "lat": null,
+            "lon": null
+          }
+        },
+        "1017": {
+          "label": "Hallway - Floor 2",
+          "type": "hallway",
+          "gps": {
+            "lat": null,
+            "lon": null
+          }
+        }
+      },
+      "meta": null,
+      "bboxXZ": [
+        [
+          -3.589346,
+          -2.289346
+        ],
+        [
+          -8.323492,
+          -1.0234919999999992
+        ]
+      ],
+      "missingEdgeReferences": 0,
+      "sha256": "daa05a2a5c84133aafa9f61c4e13bcaf7b62e9428b1e07aa598b1463e0b640d8"
+    },
+    {
+      "path": "C:\\Users\\colas\\Documents\\emergency-navigation\\nav_graph.json",
+      "bytes": 88066,
+      "nodes": 393,
+      "directedEdges": 2628,
+      "floors": [
+        0
+      ],
+      "nodeCoordinateLengths": [
+        2
+      ],
+      "exits": [
+        392
+      ],
+      "zones": {},
+      "meta": {
+        "resolution": 0.1,
+        "origin_x": -3.789346,
+        "origin_z": -8.523492
+      },
+      "bboxXZ": [
+        [
+          -3.589346,
+          -2.4893460000000003
+        ],
+        [
+          -8.323492,
+          -1.0234919999999992
+        ]
+      ],
+      "missingEdgeReferences": 0,
+      "sha256": "c54d1a177c0cad8f3944feead44397894176b645dd7cc6680f0ba77b38da9bac"
+    }
+  ]
+}
