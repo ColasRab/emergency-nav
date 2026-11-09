@@ -1,5 +1,6 @@
 /** All model/graph/geographic coordinates and heading conversions live here.
- * Y is up. At rotation 0, model +X is east and +Z is north.
+ * Y is up. At rotation 0, model +X is west and +Z is north.
+ * This preserves the model's right-handed frame in east/north/up coordinates.
  * Positive rotations are clockwise bearings from north. Distances are meters
  * only after a surveyed scale has been applied.
  */
@@ -43,7 +44,7 @@ export function enuToLngLat([east,north]: Vec2, origin: Vec2): Vec2 {
 export function modelToLngLatAlt([x,y,z]: Vec3, config: BuildingConfig): Vec3 {
   const g = config.georef;
   if (!g) throw new Error("Building has not been georeferenced.");
-  const [east,north] = rotate([x*g.scale,z*g.scale],g.rotationDeg);
+  const [east,north] = rotate([-x*g.scale,z*g.scale],g.rotationDeg);
   const [lng,lat] = enuToLngLat([east,north],g.originLngLat);
   return [lng,lat,g.altitudeM+y*g.scale];
 }
@@ -51,16 +52,22 @@ export function lngLatAltToModel([lng,lat,alt]: Vec3, config: BuildingConfig): V
   const g=config.georef;
   if (!g) throw new Error("Building has not been georeferenced.");
   const [x,z]=rotate(lngLatToEnu([lng,lat],g.originLngLat),-g.rotationDeg);
-  return [x/g.scale,(alt-g.altitudeM)/g.scale,z/g.scale];
+  return [-x/g.scale,(alt-g.altitudeM)/g.scale,z/g.scale];
 }
 export function graphBearing(dx: number,dz: number,config: BuildingConfig): number {
   if (!config.graphToModel || !config.georef) throw new Error("Survey heading alignment is missing.");
-  return (bearing(dx,dz)+config.graphToModel.rotationDeg+config.georef.rotationDeg+360)%360;
+  const [x,z]=rotate([dx,dz],config.graphToModel.rotationDeg);
+  return modelVectorToBearing(x,z,config);
+}
+export function modelVectorToBearing(dx:number,dz:number,config:BuildingConfig):number{
+  if(!config.georef)throw new Error("Survey heading alignment is missing.");
+  const [east,north]=rotate([-dx,dz],config.georef.rotationDeg);return bearing(east,north);
 }
 export function headingToGraphVector(heading: number, distance: number, config: BuildingConfig): Vec2 {
-  const rotation=(config.graphToModel?.rotationDeg??0)+(config.georef?.rotationDeg??0);
-  const a=(heading-rotation)*rad;
-  return [Math.sin(a)*distance,Math.cos(a)*distance];
+  if(!config.georef||!config.graphToModel)throw new Error("Survey heading alignment is missing.");
+  const a=(heading-config.georef.rotationDeg)*rad;
+  const scale=config.georef.scale*config.graphToModel.scale;
+  return rotate([-Math.sin(a)*distance/scale,Math.cos(a)*distance/scale],-config.graphToModel.rotationDeg);
 }
 /** 2D Umeyama similarity fit (proper rotation, positive scale, no reflection). */
 export function fitSimilarity(pairs: { source: Vec2; target: Vec2 }[]): Similarity & { residuals: number[]; rms: number } {
@@ -82,7 +89,7 @@ export function fitSimilarity(pairs: { source: Vec2; target: Vec2 }[]): Similari
 export function fitGeoreference(pairs:{model:Vec2;lngLat:Vec2}[], altitudeM:number): NonNullable<BuildingConfig["georef"]> & {residuals:number[]} {
   if(pairs.length<3) throw new Error("At least three GCPs are required.");
   const origin=pairs[0].lngLat;
-  const fit=fitSimilarity(pairs.map(p=>({source:p.model,target:lngLatToEnu(p.lngLat,origin)})));
+  const fit=fitSimilarity(pairs.map(p=>({source:[-p.model[0],p.model[1]],target:lngLatToEnu(p.lngLat,origin)})));
   return {originLngLat:enuToLngLat([fit.dx,fit.dz],origin),altitudeM,rotationDeg:fit.rotationDeg,scale:fit.scale,residualRmsM:fit.rms,residuals:fit.residuals};
 }
 /** Column-major model-to-Mercator affine matrix. The caller supplies Mapbox's
@@ -90,5 +97,5 @@ export function fitGeoreference(pairs:{model:Vec2;lngLat:Vec2}[], altitudeM:numb
 export function modelMercatorMatrix(origin:Vec3,meterUnits:number,config:BuildingConfig):number[]{
   const g=config.georef;if(!g)throw new Error("Missing georeference");
   const a=g.rotationDeg*rad,c=Math.cos(a),s=Math.sin(a),k=meterUnits*g.scale;
-  return [k*c,k*s,0,0, 0,0,k,0, k*s,-k*c,0,0, origin[0],origin[1],origin[2],1];
+  return [-k*c,-k*s,0,0, 0,0,k,0, k*s,-k*c,0,0, origin[0],origin[1],origin[2],1];
 }
