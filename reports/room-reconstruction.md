@@ -54,10 +54,20 @@ Regenerating the reconstruction replaces its estimated assets, building configur
 - Room graph node IDs use a new range to avoid attaching legacy scan-node hazards to unrelated reconstructed rooms.
 - Older scan-alignment browser drafts are archived locally when the model revision changes, rather than applied to the new room model.
 
+## Starting inside a room
+
+Select a room card, then choose a preset such as Marsden's **Back right**, tap a custom point, or enter distances from the left and back walls. **Use this starting point** places the user dot at that point in the model and opens the camera guide. Room selection by itself still only highlights the room.
+
+The generator exports furniture footprints from the same box geometry used by the GLB. A temporary visibility graph routes around those footprints with 0.25 m clearance and keeps 0.325 m from walls. It connects to each reachable door and then uses the existing corridor/stair graph. Old room-center edges are removed from the selected room's temporary graph to prevent furniture shortcuts. Door closures still reroute to another reachable door; room hazards propagate to temporary waypoints. These walking clearances are illustrative model assumptions.
+
+The camera can be aligned manually by choosing a modeled wall direction while pointing the phone toward that wall. The arrow uses the next route edge and disappears without a fresh compass reading. Position advances only when the user confirms a waypoint, including a floor change. There is no visual/inertial world tracking, automatic camera localization, or floor-anchored AR path. All route lengths and starting positions remain estimates based on the supplied model. Android/iPhone hardware validation remains outstanding.
+
+Examples: `marsden-start-point.png`, `marsden-route-3d.png`, and `marsden-start-mobile.png` in this report folder.
+
 ## Checks
 
-TypeScript strict checking and the production build pass. The 49 TypeScript tests include actual GLB parsing, complete OBJ/material/texture bundles, correct exported elevations, room order, room-to-entrance connectivity through doors, prevention of same-floor wall crossings, stair-cutout alignment, and independent per-floor material fading. Seven production-browser checks pass, covering rooms on all floors, selection, full-building view, original-scan comparison, setup/mobile layout and the existing hazard/offline workflow. Browser captures are stored as `reconstructed-*.png`.
+TypeScript strict checking and the production build pass. The 57 TypeScript tests include actual GLB parsing, complete OBJ/material/texture bundles, correct exported elevations, room order, room-to-entrance connectivity through doors, prevention of same-floor wall crossings, stair-cutout alignment, independent per-floor material fading, collision-free point starts, inherited room/door hazards, and graph/model transforms. Nine production-browser checks pass, including the Marsden back-right-to-entrance walkthrough, simulated compass alignment and stale-reading handling, custom points and invalid points at phone viewport size, rooms on all floors, original-scan comparison, and the existing hazard/offline workflow. These checks do not establish physical AR accuracy or actual phone compatibility. Browser captures are stored as `reconstructed-*.png` and `marsden-*.png`.
 
-Assets are approximately **146 KB for Admin** and **355 KB for Ynares**. The complete bundles are about **279 KB** and **690 KB**, respectively. Actual field accuracy, scan registration and geographic placement remain unverified, as indicated in the app.
+Assets are approximately **146 KB for Admin** and **355 KB for Ynares**. The complete bundles, including furniture metadata, are about **281 KB** and **692 KB**, respectively. Actual field accuracy, scan registration and geographic placement remain unverified, as indicated in the app.
 
-The latest local room-model benchmark measured 0.2 s loading for both models and approximately 41.0 fps (Admin) / 39.5 fps (Ynares) in headless Windows Edge with software rendering. These are localhost/desktop measurements, not a mobile or 4G acceptance test. Bump the layout manifest revision when changing geometry so older browser alignment drafts are archived instead of applied to new room coordinates.
+The latest local room-model benchmark measured 0.2 s loading for both models and approximately 42.3 fps (Admin) / 39.5 fps (Ynares) in headless Windows Edge with software rendering. These are localhost/desktop measurements, not a mobile or 4G acceptance test. Bump the layout manifest revision when changing geometry so older browser alignment drafts are archived instead of applied to new room coordinates.

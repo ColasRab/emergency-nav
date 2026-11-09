@@ -38,6 +38,7 @@ for (const spec of manifest.buildings) {
     objMaterials = new Map(),
     mtl = [],
     rooms = [],
+    obstacles = new Map(),
     floors = [];
   const graph = {
     meta: {
@@ -161,8 +162,14 @@ for (const spec of manifest.buildings) {
     currentObj.add(o);
     return n;
   }
-  const box = (mat, name, x, y, z, w, h, d, role = "furniture", roomId) =>
-    add(
+  const box = (mat, name, x, y, z, w, h, d, role = "furniture", roomId) => {
+    // Use the same boxes for room routing and the rendered model.
+    if (role === "furniture" && roomId && y - h / 2 < 1.8 && y + h / 2 > 0.15) {
+      const list = obstacles.get(roomId) ?? [];
+      list.push([x - w / 2, z - d / 2, x + w / 2, z + d / 2].map(rounded));
+      obstacles.set(roomId, list);
+    }
+    return add(
       cube,
       mat,
       name,
@@ -172,6 +179,7 @@ for (const spec of manifest.buildings) {
       { role, ...(roomId ? { roomId } : {}) },
       "unit-box",
     );
+  };
   const labelPlane = new THREE.PlaneGeometry(1, 1);
   async function label(
     text,
@@ -913,6 +921,7 @@ for (const spec of manifest.buildings) {
       };
       rooms.push(out);
       furniture({ ...r });
+      out.obstacles = obstacles.get(r.id) ?? [];
       await label(
         r.label,
         (x0 + x1) / 2,

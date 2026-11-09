@@ -15,9 +15,15 @@ export function hazardTouchesEdge(
   const a = graph.nodes[from],
     b = graph.nodes[to];
   if (!a || !b || !(a[2] === h.floor || b[2] === h.floor)) return false;
+  const matches = (reported: number, actual: number) =>
+    reported === actual || !!graph.nodeAliases?.[actual]?.includes(reported);
   if (h.edge)
-    return h.edge.includes(from) && h.edge.includes(to) && from !== to;
-  return h.nodeIds.includes(from) || h.nodeIds.includes(to);
+    return (
+      from !== to &&
+      ((matches(h.edge[0], from) && matches(h.edge[1], to)) ||
+        (matches(h.edge[1], from) && matches(h.edge[0], to)))
+    );
+  return h.nodeIds.some((node) => matches(node, from) || matches(node, to));
 }
 export function hazardCostModifier(
   graph: NavGraph,

@@ -12,8 +12,13 @@ import HazardScanner from "./HazardScanner";
 import HazardReport from "./HazardReport";
 import HazardList from "./HazardList";
 import RoomDirectory from "./RoomDirectory";
+import RoomStartPicker from "./RoomStartPicker";
 import { useBuildingData } from "@/lib/clientData";
-import { floorLabel, type BuildingId } from "@/lib/buildings";
+import { floorLabel, type BuildingId, type Room } from "@/lib/buildings";
+import {
+  attachRoomStart,
+  isRoomPointWalkable,
+} from "@/lib/navigation/roomStart";
 import { nearestNodeOnFloor } from "@/lib/astar";
 import type { GpsFix } from "@/lib/calibration";
 import {
@@ -29,7 +34,10 @@ import { useCompass } from "@/lib/position/compass";
 import { distanceToPath } from "@/lib/position/progress";
 import {
   graphToModel,
+  applySimilarity,
+  invertSimilarity,
   normalizeSignedDegrees,
+  type Vec2,
   type Vec3,
 } from "@/lib/geo/transform";
 import {
@@ -45,6 +53,9 @@ const ScanViewer = dynamic(() => import("./map/ScanViewer"), { ssr: false });
 const BuildingMap = dynamic(() => import("./map/BuildingMap"), { ssr: false });
 export default function NavigationApp() {
   const [selectedRoomId, setSelectedRoomId] = useState<string | undefined>();
+  const [modelRoute, setModelRoute] = useState(false),
+    [modelRoomId, setModelRoomId] = useState<string | null>(null),
+    [modelHeadingOffset, setModelHeadingOffset] = useState<number | null>(null);
   const admin = useBuildingData("admin"),
     ynares = useBuildingData("ynares"),
     [id, setId] = useState<BuildingId>("admin");
@@ -97,6 +108,9 @@ export default function NavigationApp() {
     setNavigating(false);
     setVideo(null);
     setHeadingSamples([]);
+    setModelRoute(false);
+    setModelRoomId(null);
+    setModelHeadingOffset(null);
     setPendingScan(null);
     setStatus("Scan a surveyed QR sticker, or choose a location manually.");
     previousPath.current = null;
@@ -114,24 +128,45 @@ export default function NavigationApp() {
       cancelled = true;
     };
   }, [id]);
-  const headingOffset = circularMean(headingSamples) ?? 0,
+  const headingOffset = modelRoute
+      ? (modelHeadingOffset ?? 0)
+      : (circularMean(headingSamples) ?? 0),
     heading =
       compass.heading === null
         ? null
         : normalizeSignedDegrees(compass.heading + headingOffset),
     currentFloor = estimate?.floor ?? floor;
+  const modelRoom = config?.rooms?.find((room) => room.id === modelRoomId),
+    selectedRoom = config?.rooms?.find(
+      (room) => room.id === selectedRoomId && room.floor === floor,
+    );
+  const attachment = useMemo(
+    () =>
+      graph && modelRoute && modelRoom && estimate && config?.graphToModel
+        ? attachRoomStart(
+            graph,
+            modelRoom,
+            applySimilarity(estimate.position, config.graphToModel),
+            config.graphToModel,
+          )
+        : null,
+    [graph, modelRoute, modelRoom, estimate, config?.graphToModel],
+  );
+  const routeGraph = attachment?.graph ?? graph;
   const nodeId = useMemo(
     () =>
-      graph && estimate
-        ? nearestNodeOnFloor(graph, ...estimate.position, estimate.floor)
-        : null,
-    [graph, estimate],
+      attachment
+        ? attachment.startId
+        : routeGraph && estimate
+          ? nearestNodeOnFloor(routeGraph, ...estimate.position, estimate.floor)
+          : null,
+    [routeGraph, estimate, attachment],
   );
   const result = useMemo(
     () =>
-      graph && config && nodeId !== null && nodeId >= 0
+      routeGraph && config && nodeId !== null && nodeId >= 0
         ? routeWithHazards(
-            graph,
+            routeGraph,
             nodeId,
             store.hazards,
             config,
@@ -139,24 +174,33 @@ export default function NavigationApp() {
             previousPath.current,
           )
         : null,
-    [graph, config, nodeId, store.hazards, now],
+    [routeGraph, config, nodeId, store.hazards, now],
   );
   useEffect(() => {
     previousPath.current = result?.path ?? null;
   }, [result]);
   const instruction = useMemo(
     () =>
-      graph && config && estimate && result?.path
+      routeGraph && config && estimate && result?.path
         ? nextInstruction(
-            graph,
+            routeGraph,
             result.path,
             estimate.position,
             estimate.floor,
             config,
-            heading,
+            modelRoute && modelHeadingOffset === null ? null : heading,
+            modelRoute ? "model" : "world",
           )
         : null,
-    [graph, config, estimate, result?.path, heading],
+    [
+      routeGraph,
+      config,
+      estimate,
+      result?.path,
+      heading,
+      modelRoute,
+      modelHeadingOffset,
+    ],
   );
   const hazardRevision = store.hazards
     .map((h) => `${h.id}:${h.severity}:${h.confirmations}:${h.expiresAt}`)
@@ -182,13 +226,20 @@ export default function NavigationApp() {
     lastHazardRevision.current = hazardRevision;
   }, [result, hazardRevision, navigating, emit, id, currentFloor]);
   useEffect(() => {
-    if (!navigating || !graph || !config || !estimate || !announcedPath.current)
+    if (
+      modelRoute ||
+      !navigating ||
+      !routeGraph ||
+      !config ||
+      !estimate ||
+      !announcedPath.current
+    )
       return;
     const scale =
         (config.graphToModel?.scale ?? 1) * (config.georef?.scale ?? 1),
       v = config.settings.voice,
       distance = distanceToPath(
-        graph,
+        routeGraph,
         announcedPath.current,
         estimate.position,
         estimate.floor,
@@ -204,15 +255,32 @@ export default function NavigationApp() {
       announcedPath.current = result?.path ?? null;
       setStatus("Route recalculated. Check your position or scan a nearby QR.");
     }
-  }, [navigating, graph, config, estimate, now, result?.path, emit]);
+  }, [
+    navigating,
+    routeGraph,
+    config,
+    estimate,
+    now,
+    result?.path,
+    emit,
+    modelRoute,
+  ]);
   const expectingStairs = !!(
-    graph &&
+    !modelRoute &&
+    routeGraph &&
     result?.path &&
     result.path.length > 1 &&
-    graph.nodes[result.path[0]][2] !== graph.nodes[result.path[1]][2]
+    routeGraph.nodes[result.path[0]][2] !== routeGraph.nodes[result.path[1]][2]
   );
   const handleStairs = useCallback(() => {
-    if (!graph || !result?.path || !estimate || result.path.length < 2) return;
+    if (
+      modelRoute ||
+      !graph ||
+      !result?.path ||
+      !estimate ||
+      result.path.length < 2
+    )
+      return;
     const n = graph.nodes[result.path[1]];
     setEstimate(markStairArrival(estimate, [n[0], n[1]], n[2]));
     setFloor(n[2]);
@@ -220,10 +288,11 @@ export default function NavigationApp() {
       "Planned stair segment detected. Confirm the new floor with a QR scan.",
     );
     emit("floor", "maneuver", n[2]);
-  }, [graph, result?.path, estimate, emit]);
+  }, [graph, result?.path, estimate, emit, modelRoute]);
   const handleStep = useCallback(() => {
     if (
       !config ||
+      modelRoute ||
       heading === null ||
       !config.graphToModel ||
       !config.georef ||
@@ -233,13 +302,107 @@ export default function NavigationApp() {
     setEstimate((previous) =>
       previous ? advanceStep(previous, heading, config) : null,
     );
-  }, [config, heading, navigating]);
+  }, [config, heading, navigating, modelRoute]);
+  function startFromRoom(room: Room, point: Vec2, name: string) {
+    if (!graph || !config?.graphToModel || !isRoomPointWalkable(room, point))
+      return;
+    setModelRoute(true);
+    setModelRoomId(room.id);
+    setModelHeadingOffset(null);
+    setNavigating(false);
+    setEstimate({
+      position: invertSimilarity(point, config.graphToModel),
+      floor: room.floor,
+      uncertaintyM: 4,
+      timestamp: Date.now(),
+      lastScanAt: null,
+      requiresFloorScan: true,
+      source: "manual",
+    });
+    setFloor(room.floor);
+    setMode("navigate");
+    setPendingScan(null);
+    setLabel(`${room.label} — ${name.toLowerCase()}`);
+    setStatus(
+      "Starting point set in the model. Open Camera guide and set your facing direction. Confirm waypoints as you reach them.",
+    );
+    previousPath.current = null;
+    announcedPath.current = null;
+  }
+  function alignModel(facing: number) {
+    const reading = compass.reading.current;
+    if (!reading || Date.now() - reading.at > 3000) {
+      setStatus(
+        "Enable the compass and wait for a fresh reading, then align again.",
+      );
+      return;
+    }
+    setModelHeadingOffset(normalizeSignedDegrees(facing - reading.heading));
+    setStatus(
+      "Facing direction aligned manually to the model. Position changes only when you confirm a waypoint or choose a new starting point.",
+    );
+  }
+  const waypointId =
+    modelRoute && result?.path && routeGraph
+      ? result.path.slice(1).find((n) => {
+          const p = routeGraph.nodes[n];
+          return (
+            p &&
+            estimate &&
+            (p[2] !== estimate.floor ||
+              Math.hypot(
+                p[0] - estimate.position[0],
+                p[1] - estimate.position[1],
+              ) > 0.03)
+          );
+        })
+      : undefined;
+  function confirmWaypoint() {
+    if (
+      waypointId === undefined ||
+      !routeGraph ||
+      !config ||
+      !estimate ||
+      result?.fallback
+    )
+      return;
+    const [x, z, f] = routeGraph.nodes[waypointId],
+      point: Vec2 = [x, z],
+      room = config.rooms?.find(
+        (r) =>
+          r.floor === f &&
+          isRoomPointWalkable(
+            r,
+            config.graphToModel
+              ? applySimilarity(point, config.graphToModel)
+              : point,
+          ),
+      );
+    setModelRoomId(room?.id ?? null);
+    setEstimate({
+      ...estimate,
+      position: point,
+      floor: f,
+      timestamp: Date.now(),
+    });
+    setFloor(f);
+    setLabel(routeGraph.zones[waypointId]?.label ?? "Confirmed model waypoint");
+    setStatus(
+      `Position advanced by your confirmation${f !== estimate.floor ? ` to ${floorLabel(config, f)}` : ""}. Confirm the next point only after reaching it.`,
+    );
+    previousPath.current = null;
+    announcedPath.current = null;
+  }
   function manualLocation(
     value: number,
     source: "manual" | "sign" = "manual",
     name?: string,
   ) {
     if (!graph?.nodes[value]) return;
+    setModelRoute(false);
+    setModelRoomId(null);
+    setModelHeadingOffset(null);
+    previousPath.current = null;
     const [x, z, f] = graph.nodes[value];
     setEstimate({
       position: [x, z],
@@ -295,6 +458,9 @@ export default function NavigationApp() {
         });
       }
       setEstimate(next);
+      setModelRoute(false);
+      setModelRoomId(null);
+      setModelHeadingOffset(null);
       setFloor(f);
       setLabel(name);
       setPendingScan(null);
@@ -415,7 +581,7 @@ export default function NavigationApp() {
           )}
           <ScanViewer
             config={config}
-            graph={graph}
+            graph={routeGraph}
             path={result?.path ?? []}
             floor={floor}
             user={user}
@@ -429,15 +595,33 @@ export default function NavigationApp() {
             selected={selectedRoomId}
             onSelect={setSelectedRoomId}
           />
-          <BuildingMap
-            configs={configs}
-            activeId={id}
-            floor={floor}
-            graph={graph}
-            path={result?.path ?? []}
-            user={user}
-            points={overlayPoints}
-          />
+          {selectedRoom && config.modelKind === "room-layout" && graph && (
+            <RoomStartPicker
+              key={`${id}:${selectedRoom.id}`}
+              room={selectedRoom}
+              graph={routeGraph}
+              transform={config.graphToModel ?? undefined}
+              path={result?.path ?? []}
+              onStart={startFromRoom}
+            />
+          )}
+          {config.modelKind === "room-layout" && !selectedRoom && (
+            <p className="setup-note">
+              Select a room above to choose your starting point inside it, such
+              as a back corner.
+            </p>
+          )}
+          {(!modelRoute || config.georef) && (
+            <BuildingMap
+              configs={configs}
+              activeId={id}
+              floor={floor}
+              graph={routeGraph}
+              path={result?.path ?? []}
+              user={user}
+              points={overlayPoints}
+            />
+          )}
           {!graph && (
             <p className="empty-state">
               This building needs a surveyed navigation graph. Add measured
@@ -450,12 +634,17 @@ export default function NavigationApp() {
               <label>
                 Choose your approximate location
                 <select
-                  value={nodeId ?? ""}
+                  value={modelRoute ? "model" : (nodeId ?? "")}
                   onChange={(e) => manualLocation(Number(e.target.value))}
                 >
                   <option value="" disabled>
                     Choose a known place
                   </option>
+                  {modelRoute && (
+                    <option value="model" disabled>
+                      Selected point in the model
+                    </option>
+                  )}
                   {Object.entries(graph.zones)
                     .filter(([key]) => graph.nodes[key][2] === floor)
                     .map(([key, tag]) => (
@@ -476,32 +665,42 @@ export default function NavigationApp() {
                       Math.max(0, now - estimate.timestamp) / 50000
                     ).toFixed(1)}{" "}
                     m
-                    {estimate.requiresFloorScan
-                      ? " · QR confirmation needed"
-                      : ""}
+                    {modelRoute
+                      ? " · Manually placed in the model"
+                      : estimate.requiresFloorScan
+                        ? " · QR confirmation needed"
+                        : ""}
                   </p>
                 )}
-                <button
-                  className="secondary-button"
-                  onClick={() => void compass.enable()}
-                >
-                  Enable compass for calibration
-                </button>
+                {!modelRoute && (
+                  <button
+                    className="secondary-button"
+                    onClick={() => void compass.enable()}
+                  >
+                    Enable compass for calibration
+                  </button>
+                )}
                 <p className="status-line">
                   {compass.status}{" "}
-                  {headingSamples.length > 0
-                    ? `· heading calibrated from ${headingSamples.length} anchor(s)`
-                    : ""}
+                  {modelRoute
+                    ? modelHeadingOffset === null
+                      ? "· model facing direction not set"
+                      : "· model facing direction set manually"
+                    : headingSamples.length > 0
+                      ? `· heading calibrated from ${headingSamples.length} anchor(s)`
+                      : ""}
                 </p>
-                <button
-                  className="secondary-button"
-                  onClick={() => {
-                    setMode("qr");
-                    setPendingScan(null);
-                  }}
-                >
-                  Recalibrate here
-                </button>
+                {!modelRoute && (
+                  <button
+                    className="secondary-button"
+                    onClick={() => {
+                      setMode("qr");
+                      setPendingScan(null);
+                    }}
+                  >
+                    Recalibrate here
+                  </button>
+                )}
                 {pendingScan && (
                   <button
                     onClick={() =>
@@ -543,7 +742,7 @@ export default function NavigationApp() {
               </div>
               {mode === "qr" && (
                 <QRAndCrowdRecognizer
-                  key={id}
+                  key={`qr-${id}`}
                   config={config}
                   graph={graph}
                   currentFloor={floor}
@@ -552,7 +751,7 @@ export default function NavigationApp() {
               )}
               {mode === "ocr" && (
                 <ZoneRecognizer
-                  key={id}
+                  key={`sign-${id}`}
                   graph={graph}
                   currentFloor={floor}
                   onZoneFound={(n, l) => manualLocation(n, "sign", l)}
@@ -560,22 +759,75 @@ export default function NavigationApp() {
               )}
               {mode === "navigate" && (
                 <CameraNavigation
-                  key={id}
+                  key={`camera-${id}`}
                   config={config}
-                  graph={graph}
+                  graph={routeGraph ?? graph}
                   path={result?.path ?? null}
                   graphPosition={estimate?.position ?? null}
                   currentFloor={currentFloor}
                   instruction={result?.fallback ? null : instruction}
                   headingOffset={headingOffset}
-                  onHeadingUpdate={compass.update}
+                  compassHeading={
+                    compass.reading.current &&
+                    now - compass.reading.current.at < 3000
+                      ? compass.heading
+                      : null
+                  }
+                  compassStatus={compass.status}
+                  onEnableCompass={compass.enable}
+                  modelBased={modelRoute}
+                  modelAligned={modelHeadingOffset !== null}
+                  onAlignModel={alignModel}
                   onVideoReady={setVideo}
                 />
+              )}
+              {modelRoute && result?.path && (
+                <section
+                  className="status-card"
+                  aria-label="Model route progress"
+                >
+                  <h2>Follow the model route</h2>
+                  <p>
+                    Destination: main entrance on the 1st floor (modeled
+                    assumption). Green line in 3D: your route. Blue dot: your
+                    position. Your position advances when you confirm each
+                    point.
+                  </p>
+                  {waypointId !== undefined && routeGraph && (
+                    <>
+                      <p>
+                        Next:{" "}
+                        <strong>
+                          {routeGraph.zones[waypointId]?.label ??
+                            "Clear aisle point"}
+                        </strong>{" "}
+                        · {floorLabel(config, routeGraph.nodes[waypointId][2])}
+                        {estimate &&
+                        routeGraph.nodes[waypointId][2] !== estimate.floor
+                          ? " · Take the modeled stairs to this floor"
+                          : ""}
+                      </p>
+                      <button
+                        onClick={confirmWaypoint}
+                        disabled={result.fallback}
+                      >
+                        I have reached this waypoint
+                      </button>
+                    </>
+                  )}
+                  {waypointId === undefined && (
+                    <p>You have reached the modeled entrance.</p>
+                  )}
+                  <p className="status-line">
+                    Manual guidance using estimated geometry. The camera does
+                    not track your walking position.
+                  </p>
+                </section>
               )}
               {estimate && (
                 <>
                   <PassiveStairProgress
-                    key={id}
+                    key={`stairs-${id}`}
                     expectingStairSegment={expectingStairs}
                     onStairSegmentConfirmed={handleStairs}
                     onStep={handleStep}
@@ -586,7 +838,7 @@ export default function NavigationApp() {
                     config={config}
                     position={estimate.position}
                     floor={estimate.floor}
-                    heading={heading}
+                    heading={modelRoute ? null : heading}
                     onCreate={store.create}
                   />
                   <HazardScanner
@@ -595,8 +847,8 @@ export default function NavigationApp() {
                     graph={graph}
                     position={estimate.position}
                     floor={estimate.floor}
-                    heading={heading}
-                    enabled={navigating && mode === "navigate"}
+                    heading={modelRoute ? null : heading}
+                    enabled={!modelRoute && navigating && mode === "navigate"}
                     onCreate={store.create}
                   />
                 </>
@@ -623,7 +875,7 @@ export default function NavigationApp() {
               )}
               {estimate && result?.path && (
                 <VoiceGuide
-                  key={id}
+                  key={`voice-${id}`}
                   instruction={result.fallback ? null : instruction}
                   config={config}
                   event={voiceEvent}

@@ -22,6 +22,9 @@ export const roomSchema = z.object({
   doorNodeIds: z.array(z.number().int()),
   color: z.string(),
   estimated: z.boolean(),
+  obstacles: z
+    .array(z.tuple([z.number(), z.number(), z.number(), z.number()]))
+    .default([]),
 });
 export type Room = z.infer<typeof roomSchema>;
 const similaritySchema = z.object({

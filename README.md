@@ -12,6 +12,16 @@ See [the reconstruction report](reports/room-reconstruction.md) for room lists, 
 
 **Current status:** the software is implemented and tested locally. The supplied scans and existing graph are **not surveyed deployment data**. Real floor elevations, measured scale, control points, actual exits and QR placements must be verified before using the app for physical guidance. Follow official evacuation signs and staff instructions.
 
+## Start from a point inside a room
+
+For the Marsden example, choose **Ynares Building → 2nd floor → Marsden → Back right → Use this starting point**. You can also tap the room plan or enter distances from its left and back walls. The point must be clear of modeled walls and furniture. The green line in 3D follows the model's doors, corridor and stairs to the assumed first-floor entrance; the blue dot marks your selected position. The room diagram shows its part of the route in blue.
+
+The camera guide opens after selecting a point. Enable the compass, hold the phone toward a wall identified in the room plan, choose that direction and press **Set this facing direction**, then start the navigation camera. The arrow turns with the phone. Press **I have reached this waypoint** only after physically reaching the next point, including stair landings. Choose **Start navigation** for spoken directions.
+
+This is manual guidance using estimated model geometry. It does not detect where you are standing, track your walking position, or anchor a path to the real floor. Live world-tracked AR remains unimplemented. Camera and compass support still require validation on actual Android and iPhone devices; the browser checks use desktop Edge with a simulated compass and a phone-sized viewport.
+
+Furniture footprints are exported from the same boxes that build the model. Runtime visibility paths include approximate 25 cm furniture clearance and 32.5 cm wall clearance, connect to modeled doorways, and retain door/room hazard handling.
+
 ## Run locally
 
 Use Node.js 24 or a compatible maintained Node release.

@@ -4,6 +4,7 @@ import {
   bearing,
   graphBearing,
   normalizeSignedDegrees,
+  rotate,
   type Vec2,
 } from "../geo/transform";
 import en from "./phrases/en.json";
@@ -135,10 +136,13 @@ export function nextInstruction(
   floor: number,
   config: BuildingConfig,
   heading: number | null = null,
+  frame: "world" | "model" = "world",
 ): NextInstruction | null {
   if (!path.length) return null;
   const maneuvers = buildManeuvers(graph, path, config),
-    scale = (config.graphToModel?.scale ?? 1) * (config.georef?.scale ?? 1);
+    scale =
+      (config.graphToModel?.scale ?? 1) *
+      (frame === "model" ? 1 : (config.georef?.scale ?? 1));
   const maneuver = maneuvers.find((m) => m.floor === floor);
   if (!maneuver) return null;
   const point = graph.nodes[maneuver.nodeId];
@@ -158,10 +162,32 @@ export function nextInstruction(
     const next = graph.nodes[path[maneuver.pathIndex + 1]];
     target = [next[0], next[1]];
   }
-  const absolute =
-    config.georef && config.graphToModel
-      ? graphBearing(target[0] - position[0], target[1] - position[1], config)
-      : null;
+  // The model guide aims along the next collision-free edge, even at a shallow bend.
+  if (frame === "model") {
+    const next = path
+      .map((id) => graph.nodes[id])
+      .find(
+        (n) =>
+          n[2] === floor &&
+          Math.hypot(n[0] - position[0], n[1] - position[1]) > 0.03,
+      );
+    if (next) target = [next[0], next[1]];
+  }
+  const modelDirection = rotate(
+    [target[0] - position[0], target[1] - position[1]],
+    config.graphToModel?.rotationDeg ?? 0,
+  );
+  const modelStairTransition =
+    frame === "model" &&
+    path.length > 1 &&
+    graph.nodes[path[0]][2] !== graph.nodes[path[1]][2];
+  const absolute = modelStairTransition
+    ? null
+    : frame === "model"
+      ? bearing(modelDirection[0], -modelDirection[1])
+      : config.georef && config.graphToModel
+        ? graphBearing(target[0] - position[0], target[1] - position[1], config)
+        : null;
   const kind =
     maneuver.kind === "exit" && distance < 1 ? "arrival" : maneuver.kind;
   return {

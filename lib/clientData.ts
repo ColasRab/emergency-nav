@@ -43,7 +43,17 @@ export function useBuildingData(id: BuildingId) {
                   draft,
                 );
                 localStorage.removeItem(draftKey(id));
-              } else c = candidate;
+              } else
+                c = {
+                  ...candidate,
+                  // Layout metadata belongs to this model revision. Keep survey
+                  // settings while refreshing furniture footprints in older drafts.
+                  rooms:
+                    base.modelKind === "room-layout" &&
+                    candidate.glb === base.glb
+                      ? base.rooms
+                      : candidate.rooms,
+                };
             }
           }
         } catch {

@@ -375,8 +375,7 @@ textarea {
   font-size: 0.9rem;
 }
 .voice-controls {
-  position: sticky;
-  bottom: 8px;
+  position: relative;
   background: #162331f5;
   border: 1px solid #416185;
   border-radius: 12px;
@@ -549,7 +548,75 @@ textarea {
   flex-wrap: wrap;
   gap: 14px;
 }
+.room-start-panel {
+  margin: 16px 0 24px;
+  padding: 20px;
+  border: 1px solid #42716b;
+  border-radius: 14px;
+  background: #14282e;
+}
+.room-start-panel p,
+.model-camera-setup p {
+  font-size: 0.87rem;
+  line-height: 1.5;
+}
+.room-start-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+}
+.room-point-plan {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.room-point-plan svg {
+  width: 100%;
+  max-height: 330px;
+  touch-action: manipulation;
+  cursor: crosshair;
+}
+.room-point-plan span {
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: #b6c8d2;
+}
+.room-point-plan small {
+  font-size: 0.72rem;
+  color: #a9bdc9;
+  text-align: center;
+}
+.point-presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.point-presets .secondary-button {
+  margin: 0;
+  padding: 10px 4px;
+  font-size: 0.75rem;
+}
+.point-presets .active {
+  border: 1px solid #71eec2;
+  background: #275548;
+}
+.model-camera-setup {
+  margin-bottom: 16px;
+}
+.room-start-panel button:disabled {
+  opacity: 0.45;
+}
 @media (max-width: 650px) {
+  .room-start-layout {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .room-start-panel {
+    padding: 14px;
+  }
   .model-toolbar {
     flex-direction: column;
     align-items: stretch;

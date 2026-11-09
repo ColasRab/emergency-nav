@@ -1,18 +1,14 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { NavGraph } from "@/lib/astar";
-import type { CalibrationTransform } from "@/lib/calibration";
 import type { BuildingConfig } from "@/lib/buildings";
-import {
-  deviceHeading,
-  normalizeSignedDegrees,
-  smoothBearing,
-} from "@/lib/geo/transform";
+import { normalizeSignedDegrees } from "@/lib/geo/transform";
 import {
   instructionText,
   nextInstruction,
   type NextInstruction,
 } from "@/lib/voice/instructionBuilder";
+
 export default function CameraNavigation({
   graph,
   path,
@@ -21,45 +17,42 @@ export default function CameraNavigation({
   config,
   instruction,
   headingOffset = 0,
-  onHeadingUpdate,
+  compassHeading,
+  compassStatus,
+  onEnableCompass,
+  modelBased = false,
+  modelAligned = false,
+  onAlignModel,
   onVideoReady,
 }: {
   graph: NavGraph;
   path: number[] | null;
   graphPosition: [number, number] | null;
   currentFloor: number;
-  transform?: CalibrationTransform;
-  config?: BuildingConfig;
+  config: BuildingConfig;
   instruction?: NextInstruction | null;
   headingOffset?: number;
-  onHeadingUpdate?: (raw: number) => void;
+  compassHeading: number | null;
+  compassStatus: string;
+  onEnableCompass: () => Promise<void>;
+  modelBased?: boolean;
+  modelAligned?: boolean;
+  onAlignModel?: (facing: number) => void;
   onVideoReady?: (video: HTMLVideoElement | null) => void;
 }) {
   const video = useRef<HTMLVideoElement>(null),
     stream = useRef<MediaStream | null>(null),
-    headingRef = useRef<number | null>(null),
-    listener = useRef<((e: Event) => void) | null>(null),
     alive = useRef(true),
-    timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const callbacks = useRef({ onHeadingUpdate, onVideoReady });
-  callbacks.current = { onHeadingUpdate, onVideoReady };
-  const [heading, setHeading] = useState<number | null>(null),
-    [cameraStatus, setCameraStatus] = useState("Camera is off"),
-    [compassStatus, setCompassStatus] = useState("Compass is off");
+    callbacks = useRef({ onVideoReady });
+  callbacks.current = { onVideoReady };
+  const [cameraStatus, setCameraStatus] = useState("Camera is off"),
+    [facing, setFacing] = useState(180);
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
       stream.current?.getTracks().forEach((t) => t.stop());
       callbacks.current.onVideoReady?.(null);
-      if (listener.current) {
-        window.removeEventListener(
-          "deviceorientationabsolute",
-          listener.current,
-        );
-        window.removeEventListener("deviceorientation", listener.current);
-      }
-      if (timer.current) clearTimeout(timer.current);
     };
   }, []);
   async function startCamera() {
@@ -84,88 +77,91 @@ export default function CameraNavigation({
       setCameraStatus(
         e instanceof Error
           ? e.message
-          : "Camera unavailable. Follow the text directions or choose a location manually.",
+          : "Camera unavailable. Follow the text route.",
       );
-    }
-  }
-  async function enableCompass() {
-    try {
-      if (typeof DeviceOrientationEvent === "undefined")
-        throw new Error("Compass unavailable. Use text directions.");
-      const api = DeviceOrientationEvent as typeof DeviceOrientationEvent & {
-        requestPermission?: () => Promise<string>;
-      };
-      if (
-        api.requestPermission &&
-        (await api.requestPermission()) !== "granted"
-      )
-        throw new Error("Compass permission denied. Use text directions.");
-      if (listener.current) {
-        window.removeEventListener(
-          "deviceorientationabsolute",
-          listener.current,
-        );
-        window.removeEventListener("deviceorientation", listener.current);
-      }
-      const handler = (raw: Event) => {
-        const event = raw as DeviceOrientationEvent & {
-            webkitCompassHeading?: number;
-          },
-          next = deviceHeading(event, screen.orientation?.angle ?? 0);
-        if (next === null) return;
-        const value = smoothBearing(headingRef.current, next);
-        headingRef.current = value;
-        setHeading(value);
-        callbacks.current.onHeadingUpdate?.(value);
-        setCompassStatus("Compass ready");
-        if (timer.current) clearTimeout(timer.current);
-      };
-      listener.current = handler;
-      window.addEventListener("deviceorientationabsolute", handler);
-      window.addEventListener("deviceorientation", handler);
-      setCompassStatus("Waiting for absolute compass data…");
-      timer.current = setTimeout(
-        () =>
-          setCompassStatus(
-            "No absolute compass data. Use text directions or a manual heading.",
-          ),
-        5000,
-      );
-    } catch (e) {
-      setCompassStatus(e instanceof Error ? e.message : "Compass unavailable");
     }
   }
   const target = useMemo(
     () =>
       instruction !== undefined
         ? instruction
-        : config && path && graphPosition
+        : path && graphPosition
           ? nextInstruction(
               graph,
               path,
               graphPosition,
               currentFloor,
               config,
-              heading === null ? null : heading + headingOffset,
+              compassHeading === null ? null : compassHeading + headingOffset,
+              modelBased ? "model" : "world",
             )
           : null,
     [
       instruction,
-      config,
       path,
       graphPosition,
       currentFloor,
-      graph,
-      heading,
+      config,
+      compassHeading,
       headingOffset,
+      graph,
+      modelBased,
     ],
   );
   const angle =
-    target?.bearing != null && heading !== null
-      ? normalizeSignedDegrees(target.bearing - heading - headingOffset)
+    target?.bearing != null &&
+    compassHeading !== null &&
+    (!modelBased || modelAligned)
+      ? normalizeSignedDegrees(target.bearing - compassHeading - headingOffset)
       : null;
   return (
     <section className="recognizer-panel">
+      {modelBased && (
+        <div className="model-camera-setup">
+          <h2>Face a direction in the model</h2>
+          <p>
+            Hold the phone pointing toward the wall you choose below, then set
+            this facing direction. Keep using the same plan orientation as the
+            room picker.
+          </p>
+          <label>
+            Phone is pointing toward
+            <select
+              value={facing}
+              onChange={(e) => setFacing(Number(e.target.value))}
+            >
+              <option value={180}>Front — corridor / room doors</option>
+              <option value={0}>Back — window wall</option>
+              <option value={90}>Right side of the room plan</option>
+              <option value={270}>Left side of the room plan</option>
+            </select>
+          </label>
+          <div className="button-row">
+            <button
+              className="secondary-button"
+              onClick={() => void onEnableCompass()}
+            >
+              Enable compass
+            </button>
+            <button
+              disabled={compassHeading === null}
+              onClick={() => onAlignModel?.(facing)}
+            >
+              Set this facing direction
+            </button>
+          </div>
+          <p role="status" className="status-line">
+            {modelAligned
+              ? "Facing direction set manually."
+              : "Enable the compass, then set your facing direction."}
+          </p>
+          <p className="status-line">
+            The arrow turns with the phone. Confirm each waypoint to update your
+            position. This camera view does not track your movement or anchor
+            arrows to the floor.
+          </p>
+        </div>
+      )}
       <div className="camera-navigation">
         <video
           ref={video}
@@ -185,22 +181,27 @@ export default function CameraNavigation({
           </div>
         )}
         <div className="navigation-instruction">
-          {target && config
+          {target
             ? instructionText(target, "en", config)
-            : "Scan a surveyed QR or choose your current location."}
+            : "Choose your current location to preview a route."}
         </div>
       </div>
       <div className="button-row">
         <button onClick={startCamera}>Start navigation camera</button>
-        <button onClick={enableCompass}>Enable compass</button>
+        {!modelBased && (
+          <button onClick={() => void onEnableCompass()}>Enable compass</button>
+        )}
       </div>
       <p role="status" className="status-line">
         {cameraStatus} · {compassStatus}
+        {compassHeading === null
+          ? " · Direction arrow waiting for a fresh compass reading"
+          : ""}
       </p>
-      {!config?.georef && (
+      {!config.georef && !modelBased && (
         <p className="status-warning">
-          Directional arrow needs surveyed map alignment. Text route previews
-          remain available.
+          Choose a starting point inside a room to use manual model alignment
+          for the camera guide.
         </p>
       )}
     </section>

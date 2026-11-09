@@ -25,6 +25,8 @@ export type NavGraph = {
     }
   >;
   calibrationAnchors?: Record<string, { nodeId: number; floor: number }>;
+  /** Temporary model waypoints inherit hazards reported at their original room node. */
+  nodeAliases?: Record<string, number[]>;
 };
 
 export type AstarResult = {
