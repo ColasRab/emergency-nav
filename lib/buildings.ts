@@ -6,6 +6,7 @@ export const floorSchema = z.object({
   index: z.number().int(),
   baseY: z.number().finite(),
   height: z.number().positive(),
+  slabThicknessM: z.number().positive().optional(),
 });
 const similaritySchema = z.object({
   dx: z.number().finite(),

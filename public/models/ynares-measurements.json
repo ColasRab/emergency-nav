@@ -1,0 +1,40 @@
+{
+  "buildingId": "ynares",
+  "source": "User-provided building measurements, 2026-11-09",
+  "units": "meters",
+  "heightConvention": "finished-floor-to-finished-floor; slab thickness included",
+  "verticalDatum": "First-floor finished walking surface = 0 m; exterior ground elevation remains unconfirmed",
+  "firstFloorPlatform": {
+    "dimensionM": 0.36,
+    "meaning": "base slab thickness, not an exterior-ground elevation offset"
+  },
+  "floors": [
+    {
+      "index": 0,
+      "label": "1st floor",
+      "reportedHeightM": 3.095,
+      "baseY": 0,
+      "slabThicknessM": 0.36
+    },
+    {
+      "index": 1,
+      "label": "2nd floor",
+      "reportedHeightM": 3.05,
+      "baseY": 3.095,
+      "slabThicknessM": 0.17
+    },
+    {
+      "index": 2,
+      "label": "3rd floor",
+      "reportedHeightM": 2.84,
+      "baseY": 6.145,
+      "slabThicknessM": 0.16
+    }
+  ],
+  "notes": [
+    "The dash before 305 cm is interpreted as a separator, not a negative elevation.",
+    "The user confirmed floor-to-floor heights: the 17 cm and 16 cm slabs must not be added again.",
+    "The user confirmed that 36 cm is base slab thickness. It does not establish exterior ground level.",
+    "Physical measurements do not identify their matching surfaces in the scan; model scale, origin and slab positions remain unverified."
+  ]
+}

@@ -47,6 +47,8 @@ See `reports/asset-inspection.json`, `reports/phase-0-findings.md` and `reports/
 
 The existing `main.py`, `tools.py`, OBJ and JSON in `C:/Users/colas/Documents/emergency-navigation` were preserved. A new `make_building_graph.py` and `survey-admin.example.json` were added alongside them. The repository copies live under `scripts/`.
 
+Ynares measurements are now recorded in `public/models/ynares-measurements.json`. Its `survey-ynares.example.json` is available in both `scripts/` and the Python folder. Confirmed floor-to-floor spans are 3.095, 3.05 and 2.84 m; relative walking surfaces are 0, 3.095 and 6.145 m. The 0.36/0.17/0.16 m slab thicknesses are already included and must not be added again. Scan origin, up axis and scale still require matching to actual floor surfaces.
+
 Fill a copy of the survey template with measured scale, floor elevations, exits, unique zone locations and stair landing connections. Coordinates use the same normalized model space as the GLB pipeline. Example:
 
 ```powershell

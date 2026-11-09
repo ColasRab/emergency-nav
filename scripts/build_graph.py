@@ -21,7 +21,9 @@ def build(survey_path:Path,out:Path):
     vertices=pipeline.load_vertices(survey['obj'])
     if survey['upAxis']=='Z': vertices=vertices[:,[0,2,1]]*np.array([1,1,-1])
     if survey['upAxis']=='X': vertices=vertices[:,[1,0,2]]*np.array([-1,1,1])
-    vertices=(vertices-np.array(survey.get('origin',[0,0,0])))*survey['metersPerUnit']
+    origin=survey.get('origin',[0,0,0])
+    if not isinstance(origin,list) or len(origin)!=3 or any(not isinstance(v,(int,float)) or not np.isfinite(v) for v in origin):raise ValueError('Set the measured model origin [x,y,z]; its Y coordinate must match the first-floor walking surface after reorientation.')
+    vertices=(vertices-np.array(origin))*survey['metersPerUnit']
     resolution=float(survey.get('resolution',.1))
     if resolution<.05: raise ValueError('Use resolution >= 0.05m to bound graph memory.')
     floors=survey['floors'];indices=[f['index'] for f in floors]

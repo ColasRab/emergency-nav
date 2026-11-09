@@ -10,17 +10,20 @@
     {
       "index": 0,
       "baseY": 0,
-      "height": 3
+      "height": 3.095,
+      "slabThicknessM": 0.36
     },
     {
       "index": 1,
-      "baseY": 3,
-      "height": 3
+      "baseY": 3.095,
+      "height": 3.05,
+      "slabThicknessM": 0.17
     },
     {
       "index": 2,
-      "baseY": 6,
-      "height": 3
+      "baseY": 6.145,
+      "height": 2.84,
+      "slabThicknessM": 0.16
     }
   ],
   "georef": null,

@@ -1,0 +1,45 @@
+{
+  "buildingId": "ynares",
+  "pythonSourceDir": "C:/Users/colas/Documents/emergency-navigation",
+  "obj": "C:/Users/colas/Documents/emergency-navigation/3DModel.obj",
+  "upAxis": null,
+  "metersPerUnit": null,
+  "origin": null,
+  "resolution": 0.1,
+  "maxSnapM": 1,
+  "verticalDatum": "First-floor finished walking surface = 0 m",
+  "heightConvention": "floor-to-floor; slab thickness included",
+  "floors": [
+    {
+      "index": 0,
+      "baseY": 0,
+      "height": 3.095,
+      "slabThicknessM": 0.36,
+      "floorBand": [-0.15, 0.15],
+      "bodyBand": [0.2, 1.8],
+      "exits": [],
+      "zones": []
+    },
+    {
+      "index": 1,
+      "baseY": 3.095,
+      "height": 3.05,
+      "slabThicknessM": 0.17,
+      "floorBand": [-0.15, 0.15],
+      "bodyBand": [0.2, 1.8],
+      "exits": [],
+      "zones": []
+    },
+    {
+      "index": 2,
+      "baseY": 6.145,
+      "height": 2.84,
+      "slabThicknessM": 0.16,
+      "floorBand": [-0.15, 0.15],
+      "bodyBand": [0.2, 1.8],
+      "exits": [],
+      "zones": []
+    }
+  ],
+  "stairs": []
+}
