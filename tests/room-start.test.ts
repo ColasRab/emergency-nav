@@ -84,6 +84,7 @@ describe("starting at a point inside the model", () => {
       route = routeWithHazards(
         attached.graph,
         attached.startId,
+        attached.graph.exits,
         [],
         config,
         1000,
@@ -102,6 +103,7 @@ describe("starting at a point inside the model", () => {
       original = routeWithHazards(
         attached.graph,
         attached.startId,
+        attached.graph.exits,
         [],
         config,
         1000,
@@ -124,6 +126,7 @@ describe("starting at a point inside the model", () => {
     const next = routeWithHazards(
       attached.graph,
       attached.startId,
+      attached.graph.exits,
       [hazard],
       config,
       1000,
@@ -182,6 +185,7 @@ describe("starting at a point inside the model", () => {
     const result = routeWithHazards(
       attached.graph,
       attached.startId,
+      attached.graph.exits,
       [hazard],
       config,
       1000,

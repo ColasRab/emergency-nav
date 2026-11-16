@@ -6,6 +6,7 @@ import HazardReport from "./HazardReport";
 import HazardList from "./HazardList";
 import AppSheet from "./navigation/AppSheet";
 import LocationChooser from "./navigation/LocationChooser";
+import DestinationChooser from "./navigation/DestinationChooser";
 import GpsLocationSetup from "./navigation/GpsLocationSetup";
 import { useBuildingData } from "@/lib/clientData";
 import { floorLabel, type BuildingId } from "@/lib/buildings";
@@ -46,7 +47,7 @@ export default function NavigationApp() {
     store = useHazards(id),
     compass = useCompass();
   const [sheet, setSheet] = useState<
-      "location" | "gps" | "reports" | "more" | null
+      "location" | "destination" | "gps" | "reports" | "more" | null
     >(null),
     [estimate, setEstimate] = useState<PositionEstimate | null>(null),
     [calibration, setCalibration] = useState<LocationCalibration | null>(null),
@@ -54,12 +55,13 @@ export default function NavigationApp() {
     [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null),
     [lastGpsAt, setLastGpsAt] = useState<number | null>(null),
     [message, setMessage] = useState(
-      "Set where you are standing, or calibrate two GPS locations.",
+      "Set your location and choose a destination to plan a route.",
     ),
     [manualOffset, setManualOffset] = useState<number | null>(null),
     [pendingFacing, setPendingFacing] = useState<number | null>(null),
     [fallbackFacing, setFallbackFacing] = useState(180),
     [lastPointId, setLastPointId] = useState<string | undefined>(),
+    [destinationId, setDestinationId] = useState<number | null>(null),
     [navigating, setNavigating] = useState(false),
     [voiceEvent, setVoiceEvent] = useState<VoiceEvent | null>(null),
     [now, setNow] = useState(Date.now());
@@ -151,17 +153,22 @@ export default function NavigationApp() {
     );
   const result = useMemo(
     () =>
-      routeGraph && config && nodeId !== null
+      routeGraph &&
+      config &&
+      nodeId !== null &&
+      destinationId !== null &&
+      routeGraph.nodes[destinationId]
         ? routeWithHazards(
             routeGraph,
             nodeId,
+            [destinationId],
             store.hazards,
             config,
             now,
             previousPath.current,
           )
         : null,
-    [routeGraph, config, nodeId, store.hazards, now],
+    [routeGraph, config, nodeId, destinationId, store.hazards, now],
   );
   useEffect(() => {
     previousPath.current = result?.path ?? null;
@@ -356,11 +363,12 @@ export default function NavigationApp() {
     setManualOffset(null);
     setPendingFacing(null);
     setLastPointId(undefined);
+    setDestinationId(null);
     setNavigating(false);
     setSheet(null);
     setGpsAccuracy(null);
     setLastGpsAt(null);
-    setMessage("Set your location or calibrate GPS for this building.");
+    setMessage("Set your location and choose a destination for this building.");
     previousPath.current = null;
   }
   function changeFloor(next: number) {
@@ -468,6 +476,15 @@ export default function NavigationApp() {
         <button
           disabled={!graph}
           onClick={() => {
+            setNavigating(false);
+            setSheet("destination");
+          }}
+        >
+          {destinationId === null ? "Set destination" : "Change destination"}
+        </button>
+        <button
+          disabled={!graph}
+          onClick={() => {
             stopGps();
             setNavigating(false);
             setSheet("location");
@@ -499,7 +516,10 @@ export default function NavigationApp() {
         </button>
       </div>
       <p className="navigation-live-status" role="status">
-        {error || message}
+        {error ||
+          (destinationId !== null && graph?.zones[destinationId]
+            ? `Destination: ${graph.zones[destinationId].label} · ${message}`
+            : message)}
         {gpsRunning && gpsAccuracy !== null
           ? ` · GPS ±${gpsAccuracy.toFixed(1)} m`
           : ""}
@@ -549,10 +569,10 @@ export default function NavigationApp() {
             instructions.
           </p>
         )}
-        {estimate && !result?.path && (
+        {estimate && destinationId !== null && !result?.path && (
           <p className="navigation-route-alert" role="alert">
-            No connected entrance route from this estimate. Set your location
-            again.
+            No connected route to this destination from your selected
+            location.
           </p>
         )}
       </div>
@@ -593,6 +613,8 @@ export default function NavigationApp() {
           title={
             sheet === "location"
               ? "Set your location"
+              : sheet === "destination"
+                ? "Choose destination"
               : sheet === "gps"
                 ? "Calibrate by location"
                 : sheet === "reports"
@@ -609,6 +631,20 @@ export default function NavigationApp() {
               initialId={lastPointId}
               hasGpsAlignment={!!calibration}
               onChoose={chooseLocation}
+            />
+          )}
+          {sheet === "destination" && (
+            <DestinationChooser
+              config={config}
+              graph={graph}
+              selectedId={destinationId}
+              onChoose={(nextDestinationId) => {
+                setDestinationId(nextDestinationId);
+                setNavigating(false);
+                previousPath.current = null;
+                setSheet(null);
+                setMessage("Point-to-point destination selected.");
+              }}
             />
           )}
           {sheet === "gps" && (

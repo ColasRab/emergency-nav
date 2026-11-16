@@ -87,18 +87,19 @@ export type HazardRoute = AstarResult & {
 export function routeWithHazards(
   graph: NavGraph,
   start: number,
+  goalIds: number[],
   hazards: Hazard[],
   config: BuildingConfig,
   now: number,
   previous: number[] | null = null,
 ): HazardRoute {
   const normal = hazardCostModifier(graph, hazards, config, now),
-    next = astar(graph, start, graph.exits, undefined, normal);
+    next = astar(graph, start, goalIds, undefined, normal);
   if (!next.path) {
     const fallback = astar(
       graph,
       start,
-      graph.exits,
+      goalIds,
       undefined,
       hazardCostModifier(graph, hazards, config, now, true),
     );
@@ -121,7 +122,7 @@ export function routeWithHazards(
   }
   const index = previous?.indexOf(start) ?? -1,
     old = index >= 0 ? previous!.slice(index) : null;
-  if (old && graph.exits.includes(old[old.length - 1])) {
+  if (old && goalIds.includes(old[old.length - 1])) {
     const cost = pathCost(graph, old, normal);
     if (
       Number.isFinite(cost) &&

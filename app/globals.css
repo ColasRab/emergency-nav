@@ -624,7 +624,7 @@ main.navigation-shell {
 }
 .navigation-toolbar {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) minmax(110px, 0.6fr) repeat(3, auto);
+  grid-template-columns: minmax(160px, 1fr) minmax(110px, 0.6fr) repeat(4, auto);
   align-items: end;
   gap: 8px;
   flex-shrink: 0;

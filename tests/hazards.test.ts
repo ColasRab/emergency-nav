@@ -52,7 +52,14 @@ it("reroutes only the affected floor and building", () => {
   ).toBe(1);
 });
 it("returns a clearly flagged fallback when all routes are blocked", () => {
-  const result = routeWithHazards(g, 0, [{ ...h, nodeIds: [1, 2] }], c, 100);
+  const result = routeWithHazards(
+    g,
+    0,
+    g.exits,
+    [{ ...h, nodeIds: [1, 2] }],
+    c,
+    100,
+  );
   expect(result.path).not.toBeNull();
   expect(result.fallback).toBe(true);
   expect(result.hazardIds).toEqual([h.id]);
@@ -94,9 +101,14 @@ it("keeps an existing route when savings are below 15 percent", () => {
       2: [[3, 1.2]],
     },
   };
-  expect(routeWithHazards(modified, 0, [], c, 0, [0, 2, 3]).path).toEqual([
-    0, 2, 3,
-  ]);
+  expect(
+    routeWithHazards(modified, 0, g.exits, [], c, 0, [0, 2, 3]).path,
+  ).toEqual([0, 2, 3]);
+});
+it("routes to the requested point instead of the graph exit", () => {
+  const result = routeWithHazards(g, 0, [1], [], c, 0);
+  expect(result.path).toEqual([0, 1]);
+  expect(result.path?.at(-1)).not.toBe(g.exits[0]);
 });
 it("blocks stair connectors in both directions when either landing is affected", () => {
   const graph: NavGraph = {
