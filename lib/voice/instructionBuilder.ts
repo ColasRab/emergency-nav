@@ -24,6 +24,8 @@ export type ManeuverKind =
   | "door"
   | "entrance"
   | "exit"
+  | "destination"
+  | "confirm-location"
   | "arrival";
 export type Maneuver = {
   nodeId: number;
@@ -123,7 +125,7 @@ export function buildManeuvers(
   result.push({
     nodeId: last,
     pathIndex: path.length - 1,
-    kind: "exit",
+    kind: graph.exits.includes(last) ? "exit" : "destination",
     floor: graph.nodes[last][2],
     landmark: graph.zones[last]?.label,
   });
@@ -138,6 +140,7 @@ export function nextInstruction(
   heading: number | null = null,
   frame: "world" | "model" = "world",
   metersPerModelUnit = 1,
+  arrivalRadiusM = 1,
 ): NextInstruction | null {
   if (!path.length) return null;
   const maneuvers = buildManeuvers(graph, path, config),
@@ -190,7 +193,14 @@ export function nextInstruction(
         ? graphBearing(target[0] - position[0], target[1] - position[1], config)
         : null;
   const kind =
-    maneuver.kind === "exit" && distance < 1 ? "arrival" : maneuver.kind;
+    (maneuver.kind === "exit" || maneuver.kind === "destination") &&
+    distance < arrivalRadiusM
+      ? "arrival"
+      : (maneuver.kind === "exit" || maneuver.kind === "destination") &&
+          arrivalRadiusM === 0 &&
+          distance < 1
+        ? "confirm-location"
+        : maneuver.kind;
   return {
     ...maneuver,
     kind,
@@ -210,6 +220,8 @@ export function instructionText(
   config: BuildingConfig,
 ): string {
   if (instruction.kind === "arrival") return phrase("arrival", language);
+  if (instruction.kind === "confirm-location")
+    return phrase("confirm-location", language);
   const action = phrase(instruction.kind, language, {
     floor: floorNumber(config, instruction.targetFloor ?? instruction.floor),
   });

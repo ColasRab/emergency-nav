@@ -47,10 +47,10 @@ Regenerating the reconstruction replaces its estimated assets, building configur
 ## App behavior
 
 - The main page is one camera/model window with a top-down map, estimated place and essential controls. Building, floor, location, GPS, voice and reports are available without a long page of panels.
-- **Set location** opens named room doors, corners and clear positions. **Calibrate GPS** records two named locations and starts live GPS position updates using their fitted scale and direction. There is no active QR setup or scanner.
+- **Set location** confirms a named point and facing direction. **Set destination** selects a door, clear room position or mapped walkway point. **Calibrate GPS** saves a usable two-point alignment with tracking off; **Use GPS** explicitly requests approximate updates. Uncertain GPS is rejected. There is no active QR setup or scanner.
 - Model inspection and downloads are available through **More options**. The original scan remains separate from the estimated room reconstruction; advanced alignment tools retain their inspection controls.
 - Room labels, reported floor names and voice stair floor numbers use the building's displayed floor numbering.
-- New preview graphs pass through modeled doorway openings and use both end stairs. Cross-floor connections are inside the stairwell cutouts. Their only route destination is the clearly labeled **assumed central entrance**; no verified emergency exit is asserted.
+- Preview graphs pass through modeled doorways and use both end stairs. Cross-floor connections are inside stairwell cutouts. Selected doors, clear room positions and mapped walkway points can be destinations; no verified emergency exit is asserted.
 - Room graph node IDs use a new range to avoid attaching legacy scan-node hazards to unrelated reconstructed rooms.
 - Older scan-alignment browser drafts are archived locally when the model revision changes, rather than applied to the new room model.
 
@@ -60,7 +60,7 @@ Select **Set location**, choose the room and a named door or clear position such
 
 The generator exports furniture footprints from the same box geometry used by the GLB. A temporary visibility graph routes around those footprints with 0.25 m clearance and keeps 0.325 m from walls. It connects to each reachable door and then uses the existing corridor/stair graph. Old room-center edges are removed from the selected room's temporary graph to prevent furniture shortcuts. Door closures still reroute to another reachable door; room hazards propagate to temporary waypoints. These walking clearances are illustrative model assumptions.
 
-Named-location selection can set an initial facing direction; GPS calibration also supplies compass alignment from the two recorded points. The arrow uses the next route edge and disappears without a fresh compass reading. GPS tracking moves the estimated position automatically, while stopped/manual mode retains explicit waypoint confirmation. There is no visual/inertial world tracking, automatic recognition of a room from camera pixels, or floor-anchored AR path. The calibrated distance ratio is applied to navigation distances, wall offsets and the live overlay's assumed eye height. Android/iPhone hardware validation remains outstanding.
+Named-location selection sets an initial facing direction; usable GPS calibration also supplies compass alignment. The arrow uses the next route edge and disappears without a fresh compass reading. Optional GPS shows an approximate area after uncertainty checks; confirmed mode requires explicit waypoint confirmation. There is no visual/inertial world tracking, automatic room recognition or floor-anchored AR path. Navigation distances and the live overlay's assumed eye height retain estimated model units. Android/iPhone hardware validation remains outstanding.
 
 Current examples: `compact-navigation-desktop.png`, `compact-navigation-mobile.png` and `gps-calibration-points.png`. Earlier `marsden-*.png` captures document the previous room-picker workflow.
 
@@ -74,7 +74,7 @@ The first-person renderer keeps its canvas separate from loading messages and re
 
 ## Checks
 
-TypeScript strict checking and the production build pass. The 72 TypeScript tests cover model exports, floors, paths, hazards, transforms, speech, named GPS points, handedness, distance ratios, third-point prediction, GPS noise handling and model matching. Browser checks cover the complete GPS setup/update/reload flow, compact desktop/phone layouts, manual fallback, existing shared/offline reports and model rendering. These checks do not establish physical GPS/AR accuracy or actual phone compatibility. Current captures use `compact-navigation-*.png` and `gps-calibration-points.png`; older captures remain as historical records.
+TypeScript strict checking and the production build pass. The 83 TypeScript tests cover model exports, floors, paths, hazards, transforms, speech, named GPS points, handedness, distance ratios, third-point prediction, GPS noise handling and model matching. All 14 browser checks pass and cover point-to-point confirmation, GPS rejection, the complete GPS setup/update/reload flow, compact desktop/phone layouts, manual fallback, existing shared/offline reports and model rendering. These checks do not establish physical GPS/AR accuracy or actual phone compatibility. Current captures use `compact-navigation-*.png` and `gps-calibration-points.png`; older captures remain as historical records.
 
 Assets are approximately **146 KB for Admin** and **355 KB for Ynares**. The complete bundles, including furniture metadata, are about **281 KB** and **692 KB**, respectively. Actual field accuracy, scan registration and geographic placement remain unverified, as indicated in the app.
 

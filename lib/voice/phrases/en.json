@@ -1,5 +1,5 @@
 {
-  "start": "Starting route to the nearest mapped exit.",
+  "start": "Starting route to your selected destination.",
   "straight": "Continue for {distance} meters.",
   "advance": "In {distance} meters, {action}.",
   "now": "{action} now.",
@@ -15,13 +15,15 @@
   "door": "go through the door",
   "entrance": "go through the entrance",
   "exit": "continue to the exit",
-  "arrival": "You have reached the mapped exit.",
+  "destination": "continue to your selected destination",
+  "confirm-location": "You may be near your destination. Confirm your position using Set location.",
+  "arrival": "You have reached the selected destination on the model.",
   "landmark": "Pass {landmark}.",
   "nearLandmark": "Near {landmark}.",
   "offroute": "You are off route. Recalculating.",
   "reroute": "Hazard ahead. Taking another route.",
   "blocked": "All mapped routes are blocked. Follow official evacuation procedures. The displayed fallback crosses a reported hazard.",
   "updated": "Position updated.",
-  "uncertain": "Location uncertain. Scan a nearby QR code.",
-  "floor": "Floor {floor}. Scan a QR code to confirm your location."
+  "uncertain": "Location uncertain. Confirm where you are using Set location.",
+  "floor": "Floor {floor}. Confirm your floor and location."
 }

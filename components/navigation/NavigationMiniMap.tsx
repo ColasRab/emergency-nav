@@ -2,6 +2,7 @@
 import { useId, useState } from "react";
 import type { BuildingConfig } from "@/lib/buildings";
 import type { NavGraph } from "@/lib/astar";
+import type { LocationPoint } from "@/lib/position/gpsCalibration";
 import {
   modelRouteSegments,
   type ModelPlace,
@@ -14,6 +15,8 @@ export default function NavigationMiniMap({
   floor,
   place,
   heading,
+  uncertainty,
+  destination,
 }: {
   config: BuildingConfig;
   graph: NavGraph;
@@ -21,11 +24,16 @@ export default function NavigationMiniMap({
   floor: number;
   place: ModelPlace;
   heading: number;
+  uncertainty?: number;
+  destination?: LocationPoint | null;
 }) {
-  const [scope, setScope] = useState<"room" | "floor">("room"),
+  const [scope, setScope] = useState<"room" | "floor" | null>(null),
     patternId = useId().replace(/[^a-zA-Z0-9]/g, ""),
     rooms = config.rooms?.filter((r) => r.floor === floor) ?? [],
-    room = scope === "room" ? place.room : undefined,
+    effectiveScope =
+      scope ??
+      (destination && destination.roomId !== place.room?.id ? "floor" : "room"),
+    room = effectiveScope === "room" ? place.room : undefined,
     d = config.layoutDimensions;
   const bounds = room
     ? room.rect
@@ -154,6 +162,34 @@ export default function NavigationMiniMap({
             strokeLinecap="round"
           />
         ))}
+        {destination?.floor === floor && (
+          <g
+            data-testid="minimap-destination"
+            transform={`translate(${destination.model[0]},${destination.model[1]})`}
+          >
+            <circle
+              r={unit * 1.2}
+              fill="#e5c270"
+              stroke="#14272c"
+              strokeWidth={unit * 0.3}
+            />
+            <circle r={unit * 0.4} fill="#14272c" />
+            <title>{destination.label}</title>
+          </g>
+        )}
+        {place.position && uncertainty !== undefined && (
+          <circle
+            data-testid="gps-uncertainty"
+            cx={place.position[0]}
+            cy={place.position[1]}
+            r={uncertainty}
+            fill="#85e5fa"
+            fillOpacity="0.18"
+            stroke="#85e5fa"
+            strokeWidth={unit * 0.12}
+            strokeDasharray={`${unit * 0.4} ${unit * 0.3}`}
+          />
+        )}
         {place.position && (
           <g
             data-testid="minimap-user"

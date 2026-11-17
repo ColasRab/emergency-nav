@@ -157,7 +157,7 @@ export function calibrateLocations(
     gpsDistanceM,
     modelDistanceM,
     lowConfidence:
-      gpsDistanceM <= first.gps.accuracy + second.gps.accuracy ||
+      gpsDistanceM <= 3 * (first.gps.accuracy + second.gps.accuracy) ||
       modelPerGpsMeter < 0.2 ||
       modelPerGpsMeter > 5,
     createdAt: Date.now(),
@@ -185,6 +185,55 @@ export function gpsModelHeadingOffset(
 ): number {
   return normalizeSignedDegrees(180 - calibration.rotationDeg);
 }
+
+export const MAX_GPS_GUIDANCE_UNCERTAINTY_M = 1;
+
+/** A conservative working allowance, not a guarantee of physical accuracy.
+ * Includes origin and baseline noise, which two-point fitting cannot remove.
+ */
+export function assessGpsPosition(
+  fix: GpsFix,
+  calibration: LocationCalibration,
+): {
+  usable: boolean;
+  uncertaintyM: number;
+  reason: string;
+} {
+  gpsFixSchema.parse(fix);
+  const { first, second, gpsDistanceM } = calibration,
+    baselineNoise = first.gps.accuracy + second.gps.accuracy,
+    [east, north] = lngLatToEnu(
+      [fix.longitude, fix.latitude],
+      [first.gps.longitude, first.gps.latitude],
+    ),
+    relativeError =
+      baselineNoise / Math.max(1e-9, gpsDistanceM - baselineNoise),
+    readingNoise = fix.accuracy + first.gps.accuracy,
+    uncertaintyM =
+      readingNoise + (Math.hypot(east, north) + readingNoise) * relativeError;
+  if (calibration.lowConfidence || gpsDistanceM <= 3 * baselineNoise)
+    return {
+      usable: false,
+      uncertaintyM,
+      reason:
+        "Calibration readings cannot reliably distinguish these points. Confirm your location or record points farther apart.",
+    };
+  if (
+    !Number.isFinite(uncertaintyM) ||
+    uncertaintyM > MAX_GPS_GUIDANCE_UNCERTAINTY_M
+  )
+    return {
+      usable: false,
+      uncertaintyM,
+      reason:
+        "GPS is too uncertain for room-level guidance. Last location kept; confirm where you are using Set location.",
+    };
+  return {
+    usable: true,
+    uncertaintyM,
+    reason: "Approximate GPS area; confirm your position at each named point.",
+  };
+}
 export function calibrationKey(config: BuildingConfig): string {
   return `wayfinder:location-gps:${config.id}:${config.modelRevision ?? "scan"}:v1`;
 }
@@ -207,7 +256,7 @@ export function readLocationCalibration(
         1e-7
     )
       return null;
-    return c;
+    return { ...c, lowConfidence: expected.lowConfidence };
   } catch {
     return null;
   }

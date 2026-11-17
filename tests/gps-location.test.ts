@@ -5,6 +5,7 @@ import { enuToLngLat, rotate, type Vec2 } from "../lib/geo/transform";
 import {
   buildingLocationPoints,
   calibrateLocations,
+  assessGpsPosition,
   gpsModelHeadingOffset,
   gpsToModelPosition,
   matchGpsToModel,
@@ -122,6 +123,38 @@ describe("two named GPS locations", () => {
     a.gps.accuracy = 8;
     b.gps.accuracy = 8;
     expect(calibrateLocations(config, a, b).lowConfidence).toBe(true);
+  });
+  it("rejects ordinary indoor GPS precision even after fitting two points exactly", () => {
+    const a = sample(),
+      b = sample(left),
+      fit = calibrateLocations(config, a, b);
+    const quality = assessGpsPosition({ ...b.gps, accuracy: 8 }, fit);
+    expect(quality.usable).toBe(false);
+    expect(quality.uncertaintyM).toBeGreaterThan(8);
+    expect(quality.reason).toContain("Last location kept");
+  });
+  it("includes baseline noise and rejects extrapolation far beyond the calibration pair", () => {
+    const a = sample(),
+      b = sample(left);
+    a.gps.accuracy = b.gps.accuracy = 0.1;
+    const fit = calibrateLocations(config, a, b),
+      near = assessGpsPosition(b.gps, fit),
+      far = sample({ ...left, model: [100, -50] });
+    expect(near.usable).toBe(true);
+    expect(near.uncertaintyM).toBeGreaterThan(0.2);
+    expect(assessGpsPosition({ ...far.gps, accuracy: 0.1 }, fit).usable).toBe(
+      false,
+    );
+  });
+  it("rejects a baseline dominated by uncertainty even with a precise subsequent reading", () => {
+    const a = sample(),
+      b = sample(left);
+    a.gps.accuracy = b.gps.accuracy = 1;
+    const fit = calibrateLocations(config, a, b);
+    expect(fit.lowConfidence).toBe(true);
+    expect(assessGpsPosition({ ...a.gps, accuracy: 0.01 }, fit).usable).toBe(
+      false,
+    );
   });
   it("keeps a GPS result at the correct model door and matches furniture noise to a clear aisle", () => {
     expect(matchGpsToModel(config, graph, left.model, 1)?.model).toEqual(

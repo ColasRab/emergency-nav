@@ -6,9 +6,9 @@ Indoor navigation for the Admin and Ynares buildings. The main page fits one cam
 
 1. Select the building and the floor you are physically on.
 2. For a known starting point, select **Set location**, choose a room and a place such as **Marsden · Right door**, then select **Use this location**. Corners and aisle positions are also available.
-3. To calibrate GPS, select **Calibrate GPS**. Stand at **Marsden · Right door** and record the first GPS point. Walk to **Marsden · Left door** and record the second point. Review the distance ratio and reported GPS accuracy, then select **Use this calibration**.
-4. GPS tracking starts after calibration. Subsequent GPS readings update the map marker, estimated room/place, route and camera view. **Stop GPS** freezes the last location; **Use GPS** resumes using the saved calibration.
-5. Select **Use camera** to switch from the first-person model preview to live video. Allow camera and compass access. **Start navigation** enables spoken directions; **Mute** and **Voice settings** remain available in the bottom bar.
+3. Confirm which way the phone faces. Select **Set destination** and choose a specific door, clear room position, corridor point or stair landing, on any floor of this building. The gold marker is the destination.
+4. Select **Start navigation** for spoken directions and **Use camera** for the camera direction guide. Follow the modeled route. Select **Reached next point** only when physically there, or use **Set location** to confirm another named point. The model marker does not track walking in this mode.
+5. GPS is optional. Select **Calibrate GPS**, record two distinct locations on the same floor, and review their accuracy and baseline. Unreliable pairs cannot be saved. Saving a usable calibration confirms the second location and keeps GPS off. **Use GPS** explicitly starts approximate tracking; **Stop GPS** keeps the last estimate.
 
 Choose floors manually. Changing floor stops GPS and clears the old position; select **Use GPS** again on the selected floor. The horizontal building calibration can be reused across its floors. Changing building selects that building's own saved calibration.
 
@@ -20,11 +20,11 @@ Each named location has coordinates in the reconstructed model. The app records 
 
 `model metres per GPS metre = model separation / GPS separation`
 
-The first point fixes translation, and the two-point baseline fixes scale and direction. East/north GPS coordinates are converted into the model's coordinate frame with the correct handedness. New readings use this alignment. Navigation distances, wall offsets and the camera route's assumed eye height use the fitted horizontal scale.
+The first point fixes translation, and the two-point baseline fixes scale and direction. East/north GPS coordinates are converted into the model's coordinate frame with the correct handedness. New readings use this alignment. Navigation and wall distances retain the estimated model's metre units; noisy GPS does not rescale the building or the assumed 1.6 m camera height.
 
-The app labels low confidence when the reported GPS uncertainty overlaps the baseline, or when the fitted scale is extreme. Nearly identical GPS readings and cross-floor calibration pairs are rejected. Tracking ignores readings older than 30 seconds or with reported accuracy worse than 50 metres. It matches usable estimates to modeled walkable areas; readings outside those areas keep the last position instead of teleporting the user across the building.
+The app rejects low-confidence calibration when the baseline is no more than three times the combined endpoint accuracy, or the fitted scale is extreme. Nearly identical GPS readings and cross-floor calibration pairs are rejected. Live tracking calculates a conservative working allowance from the current reading, origin uncertainty and baseline uncertainty, increasing with distance from the calibration origin. Readings with an allowance above 1 m, stale/future readings, or map corrections over 0.35 model metres do not move the marker. The total allowance including map correction must also remain within 1 m. These are rejection thresholds, not proof of metre accuracy.
 
-**Calibration does not improve the phone's GPS precision.** Indoor GPS can be too noisy to distinguish nearby doors or room corners. Two points fit a transform but do not validate the rest of an estimated floor plan. The location card displays GPS-reported accuracy, and **Set location** remains available when GPS cannot be used.
+**Calibration does not improve the phone's GPS precision.** Indoor GPS can be too noisy to distinguish nearby doors or room corners. Two points fit a transform but do not validate the rest of an estimated floor plan. GPS displays an approximate area and an uncertainty circle, without assigning an exact room corner or door label, wall distances or an arrival announcement. Confirmed named points keep their model labels and are explicitly marked as requiring manual updates. **Set location** remains available when GPS cannot be used.
 
 GPS records are saved only in this device's browser, separately for each building/model revision. They are not uploaded to Supabase or committed to GitHub. Use **Clear saved calibration** in the calibration panel to remove the current building's setup.
 
@@ -59,7 +59,7 @@ Keep `.env.local` out of GitHub. Public environment values are embedded during b
 
 The active room reconstructions reproduce the supplied floor plan, with modeled doors, furniture, corridors, fences and stairs. Admin has Stock Room, Euler, Admin Office, SHS Com Lab, Computer Lab and IT Hub. Ynares has three floors, including Marsden on the second floor. **More options** contains model downloads and advanced building tools; the main page stays focused on navigation.
 
-Ynares uses confirmed floor-to-floor heights of 3.095 / 3.05 / 2.84 m and relative walking elevations 0 / 3.095 / 6.145 m. Slabs of 0.36 / 0.17 / 0.16 m are already included in those spans. Horizontal dimensions, furniture, door positions, Admin's height and the central entrance are estimated. The sole current destination is the assumed central ground-floor entrance. Follow official evacuation signs and staff instructions.
+Ynares uses confirmed floor-to-floor heights of 3.095 / 3.05 / 2.84 m and relative walking elevations 0 / 3.095 / 6.145 m. Slabs of 0.36 / 0.17 / 0.16 m are already included in those spans. Horizontal dimensions, furniture, door positions, Admin's height and the central entrance are estimated. Destinations include named doors, clear room positions and mapped walkway points. Both endpoints connect through clear aisles, including when they are inside the same room. Reported room hazards also affect temporary destination points. Follow official evacuation signs and staff instructions.
 
 Room-model source: `scripts/room-layouts.json`. Regenerate GLB, OBJ/MTL/textures, metadata, graphs and download bundles with:
 

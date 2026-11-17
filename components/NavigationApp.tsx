@@ -10,11 +10,7 @@ import DestinationChooser from "./navigation/DestinationChooser";
 import GpsLocationSetup from "./navigation/GpsLocationSetup";
 import { useBuildingData } from "@/lib/clientData";
 import { floorLabel, type BuildingId } from "@/lib/buildings";
-import { nearestNodeOnFloor } from "@/lib/astar";
-import {
-  attachRoomStart,
-  isRoomPointWalkable,
-} from "@/lib/navigation/roomStart";
+import { pointRouteGraph } from "@/lib/navigation/pointRoute";
 import {
   applySimilarity,
   normalizeSignedDegrees,
@@ -23,7 +19,8 @@ import {
 import { useCompass } from "@/lib/position/compass";
 import type { PositionEstimate } from "@/lib/position/fusion";
 import {
-  buildingLocationPoints,
+  assessGpsPosition,
+  MAX_GPS_GUIDANCE_UNCERTAINTY_M,
   calibrationKey,
   gpsFixSchema,
   gpsModelHeadingOffset,
@@ -61,7 +58,7 @@ export default function NavigationApp() {
     [pendingFacing, setPendingFacing] = useState<number | null>(null),
     [fallbackFacing, setFallbackFacing] = useState(180),
     [lastPointId, setLastPointId] = useState<string | undefined>(),
-    [destinationId, setDestinationId] = useState<number | null>(null),
+    [destination, setDestination] = useState<LocationPoint | null>(null),
     [navigating, setNavigating] = useState(false),
     [voiceEvent, setVoiceEvent] = useState<VoiceEvent | null>(null),
     [now, setNow] = useState(Date.now());
@@ -105,14 +102,16 @@ export default function NavigationApp() {
       setPendingFacing(null);
     }
   }, [compass.heading, pendingFacing]);
-  const headingOffset = calibration
-      ? gpsModelHeadingOffset(calibration)
-      : (manualOffset ?? 0),
+  const usableCalibration =
+    calibration && !calibration.lowConfidence ? calibration : null;
+  const headingOffset =
+      manualOffset ??
+      (usableCalibration ? gpsModelHeadingOffset(usableCalibration) : 0),
     rawHeading =
       compass.reading.current && now - compass.reading.current.at < 3000
         ? compass.heading
         : null,
-    aligned = calibration !== null || manualOffset !== null,
+    aligned = usableCalibration !== null || manualOffset !== null,
     heading =
       rawHeading !== null && aligned
         ? normalizeSignedDegrees(rawHeading + headingOffset)
@@ -126,31 +125,16 @@ export default function NavigationApp() {
         : null,
     [estimate, config],
   );
-  const room = useMemo(
+  const endpoints = useMemo(
     () =>
-      modelPoint && config
-        ? config.rooms?.find(
-            (r) => r.floor === floor && isRoomPointWalkable(r, modelPoint),
-          )
-        : undefined,
-    [modelPoint, config, floor],
-  );
-  const attachment = useMemo(
-    () =>
-      graph && room && modelPoint && config?.graphToModel
-        ? attachRoomStart(graph, room, modelPoint, config.graphToModel)
+      graph && config
+        ? pointRouteGraph(graph, config, modelPoint, floor, destination)
         : null,
-    [graph, room, modelPoint, config?.graphToModel],
+    [graph, config, modelPoint, floor, destination],
   );
-  const routeGraph = attachment?.graph ?? graph,
-    nodeId = useMemo(
-      () =>
-        attachment?.startId ??
-        (routeGraph && estimate
-          ? nearestNodeOnFloor(routeGraph, ...estimate.position, floor)
-          : null),
-      [attachment, routeGraph, estimate, floor],
-    );
+  const routeGraph = endpoints?.graph ?? graph,
+    nodeId = endpoints?.startId ?? null,
+    destinationId = endpoints?.goalId ?? null;
   const result = useMemo(
     () =>
       routeGraph &&
@@ -184,7 +168,8 @@ export default function NavigationApp() {
             config,
             heading,
             "model",
-            1 / (calibration?.modelPerGpsMeter ?? 1),
+            1,
+            estimate.source === "gps" ? 0 : 0.05,
           )
         : null,
     [
@@ -195,7 +180,6 @@ export default function NavigationApp() {
       result?.fallback,
       floor,
       heading,
-      calibration?.modelPerGpsMeter,
     ],
   );
   const hazardRevision = store.hazards
@@ -227,7 +211,7 @@ export default function NavigationApp() {
     point: Vec2,
     targetFloor: number,
     source: "manual" | "gps" = "manual",
-    uncertainty = 4,
+    uncertainty = 0,
   ) {
     if (!config) return;
     setEstimate({
@@ -248,12 +232,14 @@ export default function NavigationApp() {
     setLastPointId(point.id);
     setFallbackFacing(facing);
     setManualOffset(null);
-    setPendingFacing(calibration ? null : facing);
+    setPendingFacing(facing);
     setGpsAccuracy(null);
     setLastGpsAt(null);
     setNavigating(false);
     setSheet(null);
-    setMessage(`${point.label} selected. GPS tracking is off.`);
+    setMessage(
+      `${point.label} confirmed on the model. Update your point as you walk.`,
+    );
     void compass.enable();
   }
   function startGps(chosen = calibration, targetFloor = floor) {
@@ -264,6 +250,12 @@ export default function NavigationApp() {
     }
     if (!("geolocation" in navigator)) {
       setMessage("Location access is unavailable. Use Set location.");
+      return;
+    }
+    if (chosen.lowConfidence) {
+      setMessage(
+        "GPS calibration is too uncertain. Confirm your location or record points farther apart.",
+      );
       return;
     }
     stopGps();
@@ -291,10 +283,9 @@ export default function NavigationApp() {
             return;
           }
           setGpsAccuracy(fix.accuracy);
-          if (fix.accuracy > 50) {
-            setMessage(
-              "GPS is too imprecise to place you. Use Set location or try again.",
-            );
+          const quality = assessGpsPosition(fix, chosen);
+          if (!quality.usable) {
+            setMessage(quality.reason);
             return;
           }
           const matched = matchGpsToModel(
@@ -303,7 +294,13 @@ export default function NavigationApp() {
             gpsToModelPosition(fix, chosen),
             targetFloor,
           );
-          if (!matched) {
+          if (
+            !matched ||
+            matched.correctionM > 0.35 ||
+            quality.uncertaintyM +
+              matched.correctionM / chosen.modelPerGpsMeter >
+              MAX_GPS_GUIDANCE_UNCERTAINTY_M
+          ) {
             setMessage(
               "GPS is outside the modeled walkways. Last location kept; check the two calibration points.",
             );
@@ -313,13 +310,12 @@ export default function NavigationApp() {
             matched.model,
             targetFloor,
             "gps",
-            fix.accuracy + matched.correctionM / chosen.modelPerGpsMeter,
+            quality.uncertaintyM +
+              matched.correctionM / chosen.modelPerGpsMeter,
           );
           setLastGpsAt(Date.now());
           setMessage(
-            chosen.lowConfidence
-              ? "Live GPS estimate · calibration has low confidence"
-              : "Live GPS estimate · floor selected manually",
+            "Approximate GPS area · confirm named points using Set location. Floor is selected manually.",
           );
         } catch {
           setMessage("This GPS reading could not be used. Last location kept.");
@@ -338,7 +334,8 @@ export default function NavigationApp() {
     );
   }
   function applyCalibration(next: LocationCalibration) {
-    if (!config) return;
+    if (!config || next.lowConfidence) return;
+    stopGps();
     try {
       localStorage.setItem(calibrationKey(config), JSON.stringify(next));
     } catch {
@@ -347,12 +344,14 @@ export default function NavigationApp() {
       );
     }
     setCalibration(next);
-    putAt(next.second.point.model, floor);
+    putAt(next.second.point.model, next.second.point.floor);
     setLastPointId(next.second.point.id);
     setSheet(null);
-    setManualOffset(null);
-    setPendingFacing(null);
-    startGps(next, floor);
+    setGpsAccuracy(null);
+    setLastGpsAt(null);
+    setMessage(
+      `${next.second.point.label} confirmed. Calibration saved; GPS stays off until you choose Use GPS.`,
+    );
   }
   function changeBuilding(next: BuildingId) {
     stopGps();
@@ -363,7 +362,7 @@ export default function NavigationApp() {
     setManualOffset(null);
     setPendingFacing(null);
     setLastPointId(undefined);
-    setDestinationId(null);
+    setDestination(null);
     setNavigating(false);
     setSheet(null);
     setGpsAccuracy(null);
@@ -414,13 +413,11 @@ export default function NavigationApp() {
     setMessage("Location advanced to the confirmed waypoint.");
   }
   const gpsFresh = gpsRunning && lastGpsAt !== null && now - lastGpsAt < 20000,
-    basis = gpsRunning
-      ? gpsFresh
-        ? `GPS estimate · reported ±${gpsAccuracy?.toFixed(1) ?? "?"} m`
-        : "Waiting for fresh GPS · last location kept"
-      : estimate?.source === "gps"
-        ? "Last GPS estimate · tracking off"
-        : "Selected location · GPS off";
+    basis = !estimate
+      ? "Choose a starting point"
+      : estimate.source === "gps"
+        ? `${gpsFresh ? "GPS estimate" : "Last GPS estimate"} · allowance ${estimate.uncertaintyM.toFixed(1)} m · confirm at a named point`
+        : "Confirmed on model · update at each point";
   const floorNames = config
     ? Object.fromEntries(
         config.floors.map((f) => [f.index, floorLabel(config, f.index)]),
@@ -480,7 +477,7 @@ export default function NavigationApp() {
             setSheet("destination");
           }}
         >
-          {destinationId === null ? "Set destination" : "Change destination"}
+          {destination === null ? "Set destination" : "Change destination"}
         </button>
         <button
           disabled={!graph}
@@ -517,8 +514,8 @@ export default function NavigationApp() {
       </div>
       <p className="navigation-live-status" role="status">
         {error ||
-          (destinationId !== null && graph?.zones[destinationId]
-            ? `Destination: ${graph.zones[destinationId].label} · ${message}`
+          (destination
+            ? `To ${destination.label}${config ? ` (${floorLabel(config, destination.floor)})` : ""} · ${message}`
             : message)}
         {gpsRunning && gpsAccuracy !== null
           ? ` · GPS ±${gpsAccuracy.toFixed(1)} m`
@@ -543,7 +540,14 @@ export default function NavigationApp() {
             modelAligned={aligned}
             fallbackHeading={estimate ? fallbackFacing : 0}
             locationBasis={basis}
-            modelPerMeter={calibration?.modelPerGpsMeter ?? 1}
+            locationConfirmed={estimate?.source === "manual"}
+            positionUncertaintyModelUnits={
+              estimate?.source === "gps"
+                ? estimate.uncertaintyM * (calibration?.modelPerGpsMeter ?? 1)
+                : undefined
+            }
+            destination={destination}
+            modelPerMeter={1}
             onConfirmWaypoint={
               !gpsRunning &&
               estimate &&
@@ -569,10 +573,9 @@ export default function NavigationApp() {
             instructions.
           </p>
         )}
-        {estimate && destinationId !== null && !result?.path && (
+        {estimate && destination && !result?.path && (
           <p className="navigation-route-alert" role="alert">
-            No connected route to this destination from your selected
-            location.
+            No connected route to this destination from your selected location.
           </p>
         )}
       </div>
@@ -615,11 +618,11 @@ export default function NavigationApp() {
               ? "Set your location"
               : sheet === "destination"
                 ? "Choose destination"
-              : sheet === "gps"
-                ? "Calibrate by location"
-                : sheet === "reports"
-                  ? "Hazard reports"
-                  : "More options"
+                : sheet === "gps"
+                  ? "Calibrate by location"
+                  : sheet === "reports"
+                    ? "Hazard reports"
+                    : "More options"
           }
           onClose={() => setSheet(null)}
         >
@@ -629,7 +632,7 @@ export default function NavigationApp() {
               graph={graph}
               floor={floor}
               initialId={lastPointId}
-              hasGpsAlignment={!!calibration}
+              hasGpsAlignment={false}
               onChoose={chooseLocation}
             />
           )}
@@ -637,9 +640,9 @@ export default function NavigationApp() {
             <DestinationChooser
               config={config}
               graph={graph}
-              selectedId={destinationId}
-              onChoose={(nextDestinationId) => {
-                setDestinationId(nextDestinationId);
+              selectedId={destination?.id ?? null}
+              onChoose={(point) => {
+                setDestination(point);
                 setNavigating(false);
                 previousPath.current = null;
                 setSheet(null);

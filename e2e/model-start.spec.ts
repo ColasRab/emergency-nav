@@ -3,6 +3,7 @@ import sharp from "sharp";
 import {
   calibrateGps,
   choosePlace,
+  chooseDestination,
   installGps,
   leftDoor,
   marsden,
@@ -27,6 +28,7 @@ test("compact window keeps only the map, camera and essential controls", async (
     page.locator(".model-camera-setup,.camera-guide-heading"),
   ).toHaveCount(0);
   await choosePlace(page);
+  await chooseDestination(page);
   const view = page.getByRole("region", {
     name: "Camera navigation view",
     exact: true,
@@ -35,6 +37,9 @@ test("compact window keeps only the map, camera and essential controls", async (
   await expect(view.getByTestId("estimated-place-region")).toHaveText(
     "Back right",
   );
+  await expect(
+    view.getByRole("button", { name: "Zoom map to current room", exact: true }),
+  ).toBeVisible();
   await expect
     .poll(async () => {
       const image = await view
@@ -71,22 +76,33 @@ test("two Marsden door GPS records calibrate, track and persist without any QR s
   page.on("pageerror", (error) => errors.push(error.message));
   await installGps(page);
   await ready(page);
+  await chooseDestination(page);
   await calibrateGps(page);
   const view = page.getByRole("region", {
     name: "Camera navigation view",
     exact: true,
   });
-  await expect(view.getByTestId("estimated-place-name")).toHaveText("Marsden");
+  await expect(view.getByTestId("estimated-place-name")).toHaveText(
+    "Approximate GPS area",
+  );
   await expect(view.getByTestId("estimated-place-region")).toHaveText(
-    "Left door",
+    "Confirm using Set location",
   );
   await expect(view.locator(".estimated-place-basis")).toContainText(
     "GPS estimate",
   );
+  const beforeMove = await view
+    .getByTestId("minimap-user")
+    .getAttribute("transform");
   await moveGps(page, marsden.rect[2] - 0.525, marsden.rect[1] + 0.525);
-  await expect(view.getByTestId("estimated-place-region")).toHaveText(
-    "Back right",
+  await expect(view.getByTestId("minimap-user")).not.toHaveAttribute(
+    "transform",
+    beforeMove!,
   );
+  await expect(view.getByTestId("gps-uncertainty")).toBeVisible();
+  const afterMove = await view
+    .getByTestId("minimap-user")
+    .getAttribute("transform");
   await expect(
     view.getByRole("button", { name: /Reached next point/ }),
   ).toHaveCount(0);
@@ -98,16 +114,17 @@ test("two Marsden door GPS records calibrate, track and persist without any QR s
     .toBe(1);
   await page.getByRole("button", { name: "Stop GPS", exact: true }).click();
   await moveGps(page, leftDoor[0], leftDoor[1]);
-  await expect(view.getByTestId("estimated-place-region")).toHaveText(
-    "Back right",
+  await expect(view.getByTestId("minimap-user")).toHaveAttribute(
+    "transform",
+    afterMove!,
   );
   await page.reload();
   await expect(
     page.getByRole("button", { name: "Use GPS", exact: true }),
   ).toBeEnabled();
   await page.getByRole("button", { name: "Use GPS", exact: true }).click();
-  await expect(page.getByTestId("estimated-place-region")).toHaveText(
-    "Right door",
+  await expect(page.getByTestId("estimated-place-name")).toHaveText(
+    "Approximate GPS area",
   );
   await page
     .getByRole("combobox", { name: "Floor", exact: true })
@@ -119,6 +136,76 @@ test("two Marsden door GPS records calibrate, track and persist without any QR s
     "Position not set",
   );
   expect(errors).toEqual([]);
+});
+
+test("imprecise GPS never overwrites a confirmed door and manual selection restores a named point", async ({
+  page,
+}) => {
+  await installGps(page);
+  await ready(page);
+  await calibrateGps(page);
+  await choosePlace(page, "Marsden", "Right door");
+  await moveGps(page, leftDoor[0], leftDoor[1], 8);
+  const marker = page.getByTestId("minimap-user"),
+    before = await marker.getAttribute("transform");
+  await page.getByRole("button", { name: "Use GPS", exact: true }).click();
+  await expect(page.locator(".navigation-live-status")).toContainText(
+    "too uncertain for room-level guidance",
+  );
+  await expect(marker).toHaveAttribute("transform", before!);
+  await expect(page.getByTestId("estimated-place-region")).toHaveText(
+    "Right door",
+  );
+  await expect(page.getByTestId("gps-uncertainty")).toHaveCount(0);
+  await moveGps(page, leftDoor[0], leftDoor[1]);
+  await expect(page.getByTestId("estimated-place-name")).toHaveText(
+    "Approximate GPS area",
+  );
+  await choosePlace(page, "Marsden", "Left door");
+  await expect(page.getByTestId("estimated-place-region")).toHaveText(
+    "Left door",
+  );
+  await expect(page.locator(".estimated-place-basis")).toContainText(
+    "Confirmed on model",
+  );
+});
+
+test("a route reaches the selected room corner point by point and changes destination cleanly", async ({
+  page,
+}) => {
+  await ready(page);
+  await choosePlace(page);
+  await chooseDestination(page, "Marsden · Back left");
+  await expect(page.getByTestId("minimap-destination")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Start navigation", exact: true }),
+  ).toBeEnabled();
+  const next = page.getByRole("button", { name: /Reached next point/ });
+  let steps = 0;
+  while (await next.count()) {
+    if (++steps > 30)
+      throw new Error("Route did not finish at selected corner");
+    const before = await page
+      .getByTestId("minimap-user")
+      .getAttribute("transform");
+    await next.click();
+    await expect(page.getByTestId("minimap-user")).not.toHaveAttribute(
+      "transform",
+      before!,
+    );
+  }
+  expect(steps).toBeGreaterThan(0);
+  await expect(page.getByTestId("estimated-place-region")).toHaveText(
+    "Back left",
+  );
+  await expect(page.locator(".hud-maneuver")).toContainText(
+    "reached the selected destination",
+  );
+  await chooseDestination(page, "Franklin · Left door");
+  await expect(page.locator(".navigation-live-status")).toContainText(
+    "To Franklin · Left door",
+  );
+  await expect(next).toBeVisible();
 });
 
 test("identical GPS fixes do not create a bogus ratio and first-point reversal remains usable", async ({
@@ -189,7 +276,7 @@ test("poor GPS reports low confidence while permission denial leaves manual loca
   await expect(dialog.getByText(/Low GPS confidence/)).toBeVisible();
   await expect(
     dialog.getByRole("button", { name: "Use this calibration", exact: true }),
-  ).toBeEnabled();
+  ).toBeDisabled();
   await page.screenshot({
     path: "reports/gps-calibration-points.png",
     fullPage: true,
@@ -219,6 +306,7 @@ test("phone window fits without scrolling and live-camera mode retains the locat
   });
   await ready(page);
   await choosePlace(page);
+  await chooseDestination(page);
   const view = page.getByRole("region", {
     name: "Camera navigation view",
     exact: true,

@@ -199,21 +199,23 @@ export default function GpsLocationSetup({
           </p>
           {candidate.lowConfidence && (
             <p className="status-warning">
-              Low GPS confidence. These readings may not distinguish the two
-              doors reliably. Points farther apart can give a better baseline.
+              Low GPS confidence. These readings cannot reliably distinguish the
+              points. Choose points farther apart or use Set location for
+              point-to-point guidance.
             </p>
           )}
         </div>
       )}
       <button
         className="primary-sheet-action"
-        disabled={!candidate || busy !== null}
+        disabled={!candidate || candidate.lowConfidence || busy !== null}
         onClick={() => candidate && onApply(candidate)}
       >
         Use this calibration
       </button>
       <p className="status-line">
-        Saved on this device. GPS updates position, while you select the floor
+        Saving confirms your second point and keeps GPS off. Use GPS is
+        optional; uncertain readings will be rejected. You select the floor
         manually. Calibration does not improve the phone’s GPS accuracy.
       </p>
       {saved && (

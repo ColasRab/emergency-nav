@@ -1,5 +1,5 @@
 {
-  "start": "Sisimulan ang ruta papunta sa pinakamalapit na nakamapang labasan.",
+  "start": "Sisimulan ang ruta papunta sa napili mong destinasyon.",
   "straight": "Dumiretso nang {distance} metro.",
   "advance": "Pagkaraan ng {distance} metro, {action}.",
   "now": "{action} ngayon.",
@@ -15,13 +15,15 @@
   "door": "dumaan sa pinto",
   "entrance": "dumaan sa pasukan",
   "exit": "tumuloy sa labasan",
-  "arrival": "Nakarating ka na sa nakamapang labasan.",
+  "destination": "tumuloy sa napiling destinasyon",
+  "confirm-location": "Maaaring malapit ka na sa destinasyon. Kumpirmahin ang iyong puwesto gamit ang Set location.",
+  "arrival": "Nakarating ka na sa napiling destinasyon sa modelo.",
   "landmark": "Lampasan ang {landmark}.",
   "nearLandmark": "Malapit sa {landmark}.",
   "offroute": "Nawala ka sa ruta. Kinakalkula ang bagong daan.",
   "reroute": "May panganib sa unahan. Gagamit ng ibang ruta.",
   "blocked": "Barado ang lahat ng nakamapang ruta. Sundin ang opisyal na pamamaraan sa paglikas. May naiulat na panganib sa ipinapakitang alternatibo.",
   "updated": "Na-update ang lokasyon.",
-  "uncertain": "Hindi tiyak ang lokasyon. Mag-scan ng kalapit na QR code.",
-  "floor": "Palapag {floor}. Mag-scan ng QR code upang kumpirmahin ang lokasyon."
+  "uncertain": "Hindi tiyak ang lokasyon. Kumpirmahin kung nasaan ka gamit ang Set location.",
+  "floor": "Palapag {floor}. Kumpirmahin ang iyong palapag at lokasyon."
 }

@@ -99,10 +99,24 @@ export function attachRoomStart(
   start: Vec2,
   transform: Similarity = { dx: 0, dz: 0, rotationDeg: 0, scale: 1 },
 ): RoomAttachment | null {
-  if (!isRoomPointWalkable(room, start)) return null;
+  const attachment = attachRoomPoints(graph, room, [start], transform);
+  return attachment
+    ? { graph: attachment.graph, startId: attachment.pointIds[0] }
+    : null;
+}
+
+/** Share one visibility graph when both endpoints are inside the same room. */
+export function attachRoomPoints(
+  graph: NavGraph,
+  room: Room,
+  selected: Vec2[],
+  transform: Similarity = { dx: 0, dz: 0, rotationDeg: 0, scale: 1 },
+): { graph: NavGraph; pointIds: number[] } | null {
+  if (!selected.length || selected.some((p) => !isRoomPointWalkable(room, p)))
+    return null;
   const obstacles = roomObstacles(room),
     interior = roomInterior(room),
-    points: Vec2[] = [[...start]];
+    points: Vec2[] = [];
   const add = (p: Vec2) => {
     const found = points.findIndex(
       (q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < 1e-5,
@@ -111,6 +125,7 @@ export function attachRoomStart(
     points.push(p);
     return points.length - 1;
   };
+  const selectedIndices = selected.map((p) => add([...p]));
   for (const r of [interior, ...obstacles])
     for (const x of [r[0], r[2]])
       for (const z of [r[1], r[3]])
@@ -171,5 +186,5 @@ export function attachRoomStart(
     };
     link(base + door.index, door.id);
   }
-  return { graph: out, startId: base };
+  return { graph: out, pointIds: selectedIndices.map((i) => base + i) };
 }

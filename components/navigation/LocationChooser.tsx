@@ -40,8 +40,8 @@ export default function LocationChooser({
   return (
     <div className="location-chooser">
       <p>
-        Choose where you are standing. This sets a location directly in the
-        model.
+        Confirm where you are standing and which way the phone faces. This fixes
+        your point on the model; update it as you walk.
       </p>
       <label>
         Room or area

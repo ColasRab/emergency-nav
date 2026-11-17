@@ -3,7 +3,7 @@ import config from "../public/models/ynares.json";
 export const marsden = config.rooms.find((r) => r.label === "Marsden")!;
 export const rightDoor = [...marsden.doors].sort((a, b) => b[0] - a[0])[0];
 export const leftDoor = [...marsden.doors].sort((a, b) => a[0] - b[0])[0];
-export function gpsAtModel(x: number, z: number, accuracy = 0.4) {
+export function gpsAtModel(x: number, z: number, accuracy = 0.1) {
   const degrees = 180 / Math.PI,
     radius = 6378137;
   return {
@@ -40,7 +40,26 @@ export async function choosePlace(
     .click();
   await expect(dialog).toHaveCount(0);
 }
-export async function installGps(page: Page, accuracy = 0.4, denied = false) {
+export async function chooseDestination(
+  page: Page,
+  label = "Rutherford · Right door",
+) {
+  await page
+    .getByRole("button", { name: /^(Set|Change) destination$/ })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "Choose destination",
+    exact: true,
+  });
+  await dialog
+    .getByRole("combobox", { name: "Destination", exact: true })
+    .selectOption({ label });
+  await dialog
+    .getByRole("button", { name: "Use this destination", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0);
+}
+export async function installGps(page: Page, accuracy = 0.1, denied = false) {
   await page.addInitScript(
     ({ initial, startsDenied }) => {
       let fix = initial,
@@ -115,7 +134,7 @@ export async function moveGps(
   page: Page,
   x: number,
   z: number,
-  accuracy = 0.4,
+  accuracy = 0.1,
 ) {
   await page.evaluate(
     (detail) =>
@@ -123,7 +142,7 @@ export async function moveGps(
     gpsAtModel(x, z, accuracy),
   );
 }
-export async function calibrateGps(page: Page, accuracy = 0.4) {
+export async function calibrateGps(page: Page, accuracy = 0.1) {
   await page
     .getByRole("button", { name: "Calibrate GPS", exact: true })
     .click();
@@ -149,6 +168,16 @@ export async function calibrateGps(page: Page, accuracy = 0.4) {
     .getByRole("button", { name: "Use this calibration", exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Use GPS", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByTestId("estimated-place-region")).toHaveText(
+    "Left door",
+  );
+  await expect(page.locator(".estimated-place-basis")).toContainText(
+    "Confirmed on model",
+  );
+  await page.getByRole("button", { name: "Use GPS", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Stop GPS", exact: true }),
   ).toBeVisible();

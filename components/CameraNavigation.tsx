@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { NavGraph } from "@/lib/astar";
 import type { BuildingConfig } from "@/lib/buildings";
+import type { LocationPoint } from "@/lib/position/gpsCalibration";
 import { normalizeSignedDegrees } from "@/lib/geo/transform";
 import {
   describeModelPlace,
@@ -41,6 +42,9 @@ export default function CameraNavigation({
   locationBasis,
   fallbackHeading = 180,
   modelPerMeter = 1,
+  locationConfirmed = false,
+  positionUncertaintyModelUnits,
+  destination,
 }: {
   graph: NavGraph;
   path: number[] | null;
@@ -62,6 +66,9 @@ export default function CameraNavigation({
   locationBasis?: string;
   fallbackHeading?: number;
   modelPerMeter?: number;
+  locationConfirmed?: boolean;
+  positionUncertaintyModelUnits?: number;
+  destination?: LocationPoint | null;
 }) {
   const video = useRef<HTMLVideoElement>(null),
     stream = useRef<MediaStream | null>(null),
@@ -201,6 +208,8 @@ export default function CameraNavigation({
   );
   const angle =
     target?.bearing != null &&
+    target.kind !== "arrival" &&
+    target.kind !== "confirm-location" &&
     compassHeading !== null &&
     (!modelBased || modelAligned)
       ? normalizeSignedDegrees(target.bearing - compassHeading - headingOffset)
@@ -379,8 +388,14 @@ export default function CameraNavigation({
           graph={graph}
           path={path}
           floor={currentFloor}
-          place={place}
+          place={
+            positionUncertaintyModelUnits !== undefined
+              ? { ...place, room: undefined }
+              : place
+          }
           heading={modelHeading}
+          uncertainty={positionUncertaintyModelUnits}
+          destination={destination}
         />
         <div className="camera-hud-actions">
           <span className={`camera-mode-badge ${live ? "live" : ""}`}>
@@ -433,38 +448,57 @@ export default function CameraNavigation({
           <strong>
             {target
               ? instructionText(target, "en", config)
-              : "Set your location to start directions."}
+              : graphPosition
+                ? "Choose a destination to plan a route."
+                : "Set your location to start directions."}
           </strong>
           <small>
-            {angle === null
-              ? compact
-                ? !graphPosition
-                  ? "Choose where you are standing"
-                  : !modelAligned
-                    ? "Allow compass access or calibrate GPS"
-                    : "Waiting for compass direction"
-                : "Set facing direction for the camera arrow"
-              : "Follow the next modeled waypoint"}
+            {target?.kind === "arrival"
+              ? "Update your location again if you move"
+              : target?.kind === "confirm-location"
+                ? "GPS cannot confirm arrival at this point"
+                : angle === null
+                  ? compact
+                    ? !graphPosition
+                      ? "Choose where you are standing"
+                      : !modelAligned
+                        ? "Allow compass access for directions"
+                        : !path
+                          ? "Select the point you want to reach"
+                          : "Waiting for compass direction"
+                    : "Set facing direction for the camera arrow"
+                  : "Follow the next modeled waypoint"}
           </small>
         </div>
         <section
           className="estimated-place-card"
-          aria-label="Estimated location"
+          aria-label={
+            locationConfirmed ? "Confirmed model point" : "Estimated location"
+          }
         >
           <span className="hud-eyebrow">
-            <i /> Estimated location
+            <i />{" "}
+            {locationConfirmed ? "Confirmed model point" : "Estimated location"}
           </span>
-          <strong data-testid="estimated-place-name">{place.title}</strong>
+          <strong data-testid="estimated-place-name">
+            {positionUncertaintyModelUnits !== undefined
+              ? "Approximate GPS area"
+              : place.title}
+          </strong>
           <span
             className="estimated-place-region"
             data-testid="estimated-place-region"
           >
-            {place.region}
+            {positionUncertaintyModelUnits !== undefined
+              ? "Confirm using Set location"
+              : place.region}
           </span>
           <span className="estimated-place-floor">
             {place.floor} · {config.name}
           </span>
-          {place.distances && <small>{place.distances}</small>}
+          {place.distances && positionUncertaintyModelUnits === undefined && (
+            <small>{place.distances} · estimated</small>
+          )}
           <div className="estimated-place-basis">
             {locationBasis ??
               (modelBased
