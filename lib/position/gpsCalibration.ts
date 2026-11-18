@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { BuildingConfig } from "../buildings";
+import type { BuildingConfig, Room } from "../buildings";
 import type { NavGraph } from "../astar";
 import type { GpsFix } from "../calibration";
 import { GPS_CAPTURE_READINGS, GPS_CAPTURE_SPAN_MS } from "./gpsCapture";
@@ -66,33 +66,36 @@ export const locationCalibrationSchema = z.object({
 });
 export type LocationCalibration = z.infer<typeof locationCalibrationSchema>;
 
+function roomDoorPoints(room: Room): LocationPoint[] {
+  const doors = room.doors
+    .map((model, i) => ({ model, nodeId: room.doorNodeIds[i] }))
+    .sort((a, b) => b.model[0] - a.model[0]);
+  return doors.map((door, i): LocationPoint => ({
+    id: room.id + ":door:" + i,
+    label:
+      room.label +
+      " · " +
+      (doors.length === 1
+        ? "Door"
+        : i === 0
+          ? "Right door"
+          : i === doors.length - 1
+            ? "Left door"
+            : "Door " + (i + 1)),
+    floor: room.floor,
+    model: [...door.model],
+    roomId: room.id,
+    nodeId: door.nodeId,
+  }));
+}
+
 export function buildingLocationPoints(
   config: BuildingConfig,
   graph: NavGraph,
 ): LocationPoint[] {
   const points: LocationPoint[] = [];
   for (const room of config.rooms ?? []) {
-    const doors = room.doors
-      .map((p, i) => ({ p, nodeId: room.doorNodeIds[i] }))
-      .sort((a, b) => b.p[0] - a.p[0]);
-    for (const [i, door] of doors.entries()) {
-      const side =
-        doors.length === 1
-          ? "Door"
-          : i === 0
-            ? "Right door"
-            : i === doors.length - 1
-              ? "Left door"
-              : `Door ${i + 1}`;
-      points.push({
-        id: `${room.id}:door:${i}`,
-        label: `${room.label} · ${side}`,
-        floor: room.floor,
-        model: [...door.p],
-        roomId: room.id,
-        nodeId: door.nodeId,
-      });
-    }
+    points.push(...roomDoorPoints(room));
     for (const [row, r] of ["Back", "Middle", "Front"].map(
       (v, i) => [v, i] as const,
     ))
@@ -127,54 +130,54 @@ export function buildingLocationPoints(
   return points;
 }
 
-/** Prefer an identifiable pair spanning the floor rather than two nearby doors. */
-export function recommendedCalibrationPair(
-  points: LocationPoint[],
+/** The only permitted GPS anchors: minimum and maximum model X among actual floor doors. */
+export function floorCalibrationDoorPair(
+  config: BuildingConfig,
+  floor: number,
 ): LocationPoint[] {
-  const candidates = points.filter((p) => p.nodeId !== undefined);
-  let best: LocationPoint[] = [],
-    distance = -1;
-  for (const a of candidates)
-    for (const b of candidates) {
-      if (a.floor !== b.floor || a.id === b.id) continue;
-      const d = Math.hypot(a.model[0] - b.model[0], a.model[1] - b.model[1]);
-      if (d > distance) {
-        best = [a, b];
-        distance = d;
-      }
-    }
-  return best.sort((a, b) => a.model[0] - b.model[0]);
+  const doors = (config.rooms ?? [])
+    .filter((room) => room.floor === floor)
+    .flatMap(roomDoorPoints)
+    .filter((point) => point.nodeId !== undefined);
+  const left = [...doors].sort(
+    (a, b) =>
+      a.model[0] - b.model[0] ||
+      b.model[1] - a.model[1] ||
+      a.id.localeCompare(b.id),
+  )[0];
+  const right = [...doors].sort(
+    (a, b) =>
+      b.model[0] - a.model[0] ||
+      b.model[1] - a.model[1] ||
+      a.id.localeCompare(b.id),
+  )[0];
+  return left && right && right.model[0] - left.model[0] > 1e-6
+    ? [left, right]
+    : [];
 }
 
-/** Use the current room's modeled doorways; GPS quality does not change their positions. */
-export function roomCalibrationPair(
-  points: LocationPoint[],
-  currentId?: string,
-): LocationPoint[] {
-  const currentRoom = points.find((p) => p.id === currentId)?.roomId,
-    rooms = [
-      ...new Set(
-        points
-          .filter((p) => p.roomId && p.nodeId !== undefined)
-          .map((p) => p.roomId!),
-      ),
-    ],
-    preferred =
-      currentRoom ??
-      points.find((p) => p.label === "Marsden · Right door")?.roomId,
-    roomId = [preferred, ...rooms].find(
-      (id) =>
-        id &&
-        points.filter((p) => p.roomId === id && p.nodeId !== undefined)
-          .length >= 2,
-    );
-  if (!roomId) return [];
-  const doors = points
-    .filter((p) => p.roomId === roomId && p.nodeId !== undefined)
-    .sort((a, b) => b.model[0] - a.model[0]);
-  if (doors.length < 2) return [];
-  const first = doors.find((p) => p.id === currentId) ?? doors[0];
-  return [first, first.id === doors[0].id ? doors.at(-1)! : doors[0]];
+export function isFloorCalibrationPair(
+  config: BuildingConfig,
+  first: LocationPoint,
+  second: LocationPoint,
+): boolean {
+  if (first.floor !== second.floor || first.id === second.id) return false;
+  const pair = floorCalibrationDoorPair(config, first.floor);
+  return (
+    pair.length === 2 &&
+    [first, second].every((point) => {
+      const expected = pair.find((door) => door.id === point.id);
+      return (
+        expected &&
+        expected.nodeId === point.nodeId &&
+        expected.roomId === point.roomId &&
+        Math.hypot(
+          expected.model[0] - point.model[0],
+          expected.model[1] - point.model[1],
+        ) < 1e-6
+      );
+    })
+  );
 }
 
 export class GpsBaselineError extends Error {
@@ -304,19 +307,22 @@ export function assessGpsPosition(
     reason: "Approximate GPS area; confirm your position at each named point.",
   };
 }
-export function calibrationKey(config: BuildingConfig): string {
-  return `wayfinder:location-gps:${config.id}:${config.modelRevision ?? "scan"}:v2`;
+export function calibrationKey(config: BuildingConfig, floor: number): string {
+  return `wayfinder:location-gps:${config.id}:${config.modelRevision ?? "scan"}:floor-${floor}:v2`;
 }
 export function readLocationCalibration(
   config: BuildingConfig,
+  floor: number,
 ): LocationCalibration | null {
   try {
-    const data = localStorage.getItem(calibrationKey(config));
+    const data = localStorage.getItem(calibrationKey(config, floor));
     if (!data) return null;
     const c = locationCalibrationSchema.parse(JSON.parse(data));
     if (
       c.buildingId !== config.id ||
-      c.revision !== (config.modelRevision ?? "scan")
+      c.revision !== (config.modelRevision ?? "scan") ||
+      c.first.point.floor !== floor ||
+      !isFloorCalibrationPair(config, c.first.point, c.second.point)
     )
       return null;
     const expected = calibrateLocations(config, c.first, c.second);

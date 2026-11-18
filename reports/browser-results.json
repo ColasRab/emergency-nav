@@ -123,12 +123,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 4625,
+                  "duration": 7579,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:46:39.584Z",
+                  "startTime": "2026-11-18T04:33:43.287Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -138,11 +138,11 @@
           ],
           "id": "01b936732ce314d10a62-5d72f5fa10d605eab869",
           "file": "model-start.spec.ts",
-          "line": 16,
+          "line": 18,
           "column": 1
         },
         {
-          "title": "two Marsden door GPS records calibrate, track and persist without any QR step",
+          "title": "floor-end door GPS records calibrate, track and persist without any QR step",
           "ok": true,
           "tags": [],
           "tests": [
@@ -157,12 +157,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 13427,
+                  "duration": 15022,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:46:44.723Z",
+                  "startTime": "2026-11-18T04:33:51.670Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -170,9 +170,9 @@
               "status": "expected"
             }
           ],
-          "id": "01b936732ce314d10a62-f64701bcd1a283fca504",
+          "id": "01b936732ce314d10a62-95e8a2e3a026de3e587f",
           "file": "model-start.spec.ts",
-          "line": 72,
+          "line": 74,
           "column": 1
         },
         {
@@ -191,12 +191,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 11725,
+                  "duration": 13415,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:46:58.175Z",
+                  "startTime": "2026-11-18T04:34:06.741Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -206,7 +206,7 @@
           ],
           "id": "01b936732ce314d10a62-62e72e6367cbc08fd3df",
           "file": "model-start.spec.ts",
-          "line": 141,
+          "line": 152,
           "column": 1
         },
         {
@@ -225,12 +225,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2640,
+                  "duration": 4607,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:47:09.967Z",
+                  "startTime": "2026-11-18T04:34:20.209Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -240,11 +240,11 @@
           ],
           "id": "01b936732ce314d10a62-807e445e54071f36e601",
           "file": "model-start.spec.ts",
-          "line": 173,
+          "line": 184,
           "column": 1
         },
         {
-          "title": "identical GPS fixes do not create a bogus ratio and first-point reversal remains usable",
+          "title": "identical GPS fixes keep model door confirmation available and permit reversing the two endpoints",
           "ok": true,
           "tags": [],
           "tests": [
@@ -259,12 +259,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 10937,
+                  "duration": 11807,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:47:12.632Z",
+                  "startTime": "2026-11-18T04:34:24.843Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -272,9 +272,9 @@
               "status": "expected"
             }
           ],
-          "id": "01b936732ce314d10a62-e1d8016061cad1990a51",
+          "id": "01b936732ce314d10a62-41bea2a8ba58fff05851",
           "file": "model-start.spec.ts",
-          "line": 211,
+          "line": 222,
           "column": 1
         },
         {
@@ -293,12 +293,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 11294,
+                  "duration": 13343,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:47:23.594Z",
+                  "startTime": "2026-11-18T04:34:36.699Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -308,7 +308,7 @@
           ],
           "id": "01b936732ce314d10a62-6f9ef0abd25efa551780",
           "file": "model-start.spec.ts",
-          "line": 254,
+          "line": 264,
           "column": 1
         },
         {
@@ -327,12 +327,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1856,
+                  "duration": 3205,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:47:34.909Z",
+                  "startTime": "2026-11-18T04:34:50.117Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -342,7 +342,7 @@
           ],
           "id": "01b936732ce314d10a62-08a75fc2f2e67f4148e9",
           "file": "model-start.spec.ts",
-          "line": 294,
+          "line": 304,
           "column": 1
         },
         {
@@ -361,12 +361,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 10981,
+                  "duration": 12471,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:47:36.818Z",
+                  "startTime": "2026-11-18T04:34:53.349Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -376,11 +376,11 @@
           ],
           "id": "01b936732ce314d10a62-d1dbd57414d123bb63a3",
           "file": "model-start.spec.ts",
-          "line": 352,
+          "line": 362,
           "column": 1
         },
         {
-          "title": "nearby GPS readings still allow confirmation of either modeled door",
+          "title": "unresolved GPS still allows confirmation of either permitted floor-end door",
           "ok": true,
           "tags": [],
           "tests": [
@@ -395,12 +395,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 10690,
+                  "duration": 12618,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:47:47.820Z",
+                  "startTime": "2026-11-18T04:35:05.848Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -408,9 +408,43 @@
               "status": "expected"
             }
           ],
-          "id": "01b936732ce314d10a62-9186973dd84fafef4877",
+          "id": "01b936732ce314d10a62-9de15242772ec7cdb451",
           "file": "model-start.spec.ts",
-          "line": 429,
+          "line": 431,
+          "column": 1
+        },
+        {
+          "title": "every floor limits calibration to exactly its two outermost actual doors",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5508,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-18T04:35:18.528Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "01b936732ce314d10a62-44a1d05fd0564bca27b3",
+          "file": "model-start.spec.ts",
+          "line": 497,
           "column": 1
         },
         {
@@ -429,12 +463,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2771,
+                  "duration": 4551,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:47:58.529Z",
+                  "startTime": "2026-11-18T04:35:24.125Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -444,7 +478,7 @@
           ],
           "id": "01b936732ce314d10a62-c31db08c1bb6763dd1df",
           "file": "model-start.spec.ts",
-          "line": 487,
+          "line": 576,
           "column": 1
         }
       ]
@@ -471,12 +505,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2262,
+                  "duration": 3783,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:48:01.356Z",
+                  "startTime": "2026-11-18T04:35:28.737Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -505,12 +539,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 5897,
+                  "duration": 7366,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:48:03.646Z",
+                  "startTime": "2026-11-18T04:35:32.546Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -539,12 +573,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1182,
+                  "duration": 4171,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:48:09.564Z",
+                  "startTime": "2026-11-18T04:35:39.948Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -573,12 +607,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1203,
+                  "duration": 3967,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:48:10.760Z",
+                  "startTime": "2026-11-18T04:35:44.145Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -607,12 +641,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 201,
+                  "duration": 266,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:48:11.983Z",
+                  "startTime": "2026-11-18T04:35:48.240Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -641,12 +675,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 8152,
+                  "duration": 9260,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:48:12.208Z",
+                  "startTime": "2026-11-18T04:35:48.535Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -675,12 +709,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 72,
+                  "duration": 123,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T00:48:20.379Z",
+                  "startTime": "2026-11-18T04:35:57.821Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -698,9 +732,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-11-18T00:46:36.089Z",
-    "duration": 105317.08,
-    "expected": 17,
+    "startTime": "2026-11-18T04:33:36.655Z",
+    "duration": 142293.736,
+    "expected": 18,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

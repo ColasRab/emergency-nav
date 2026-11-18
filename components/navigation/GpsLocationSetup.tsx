@@ -4,14 +4,13 @@ import type { BuildingConfig } from "@/lib/buildings";
 import type { NavGraph } from "@/lib/astar";
 import { lngLatToEnu } from "@/lib/geo/transform";
 import {
-  buildingLocationPoints,
+  floorCalibrationDoorPair,
   calibrateLocations,
   assessGpsPosition,
-  recommendedCalibrationPair,
-  roomCalibrationPair,
   GpsBaselineError,
   type GpsLocationSample,
   type LocationCalibration,
+  type LocationPoint,
 } from "@/lib/position/gpsCalibration";
 import {
   captureCalibrationGps,
@@ -79,29 +78,13 @@ export default function GpsLocationSetup({
   initialPointId?: string;
 }) {
   const points = useMemo(
-      () =>
-        buildingLocationPoints(config, graph).filter((p) => p.floor === floor),
-      [config, graph, floor],
-    ),
-    recommended = useMemo(() => recommendedCalibrationPair(points), [points]),
-    roomPair = useMemo(
-      () => roomCalibrationPair(points, initialPointId),
-      [points, initialPointId],
-    ),
-    preferred = roomPair.length ? roomPair : recommended;
+    () => floorCalibrationDoorPair(config, floor),
+    [config, floor],
+  );
   const [mode, setMode] = useState<"gps" | "point">("gps"),
     [firstId, setFirstId] = useState(
-      (initialPointId ? preferred[0]?.id : undefined) ??
-        points.find((p) => p.id === saved?.first.point.id)?.id ??
-        preferred[0]?.id ??
+      points.find((p) => p.id === saved?.first.point.id)?.id ??
         points[0]?.id ??
-        "",
-    ),
-    [secondId, setSecondId] = useState(
-      (initialPointId ? preferred[1]?.id : undefined) ??
-        points.find((p) => p.id === saved?.second.point.id)?.id ??
-        preferred[1]?.id ??
-        points[1]?.id ??
         "",
     ),
     [first, setFirst] = useState<GpsLocationSample | null>(null),
@@ -144,8 +127,8 @@ export default function GpsLocationSetup({
     : null;
   const fresh =
       candidate !== null && now - candidate.second.gps.timestamp <= 60_000,
-    firstPoint = points.find((p) => p.id === firstId),
-    secondPoint = points.find((p) => p.id === secondId),
+    firstPoint = points.find((p) => p.id === firstId) ?? points[0],
+    secondPoint = points.find((p) => p.id !== firstPoint?.id),
     modelSeparation =
       firstPoint && secondPoint
         ? Math.hypot(
@@ -163,9 +146,9 @@ export default function GpsLocationSetup({
     confirmedPoint =
       [second?.point, first?.point].find((p) => p?.id === confirmedId) ??
       second?.point,
-    sameRoomDoors =
+    doorPair =
       !!first?.point.roomId &&
-      first.point.roomId === second?.point.roomId &&
+      !!second?.point.roomId &&
       first.point.nodeId !== undefined &&
       second.point.nodeId !== undefined;
   const recordedGpsDistance =
@@ -177,15 +160,14 @@ export default function GpsLocationSetup({
           ),
         )
       : 0;
-  function useFartherPoints() {
-    if (recommended.length < 2) return;
-    setFirstId(recommended[0].id);
-    setSecondId(recommended[1].id);
-    setFirst(null);
-    setSecond(null);
-    setCandidate(null);
-    setConfirmedId("");
-    setError("");
+  function doorLabel(point: LocationPoint) {
+    return (
+      (point.id === points[0]?.id
+        ? "Farthest left door"
+        : "Farthest right door") +
+      " — " +
+      point.label
+    );
   }
   function changeMode(next: "gps" | "point") {
     capture.current?.abort();
@@ -193,9 +175,7 @@ export default function GpsLocationSetup({
     setError("");
   }
   async function record(step: 1 | 2) {
-    const point = points.find(
-      (p) => p.id === (step === 1 ? firstId : secondId),
-    );
+    const point = step === 1 ? firstPoint : secondPoint;
     if (!point || (step === 2 && !first)) return;
     capture.current?.abort();
     const controller = new AbortController();
@@ -270,7 +250,8 @@ export default function GpsLocationSetup({
               lastAttemptPointId.current ??
               second?.point.id ??
               first?.point.id ??
-              firstId
+              initialPointId ??
+              firstPoint?.id
             }
             hasGpsAlignment={false}
             onChoose={onUsePoint}
@@ -279,13 +260,20 @@ export default function GpsLocationSetup({
       ) : (
         <>
           <p>
-            Choose the room’s left and right doors, then record each location
-            while standing still. If GPS cannot distinguish them, you can still
-            confirm your current door using its position in the model.
+            GPS calibration is limited to this floor's farthest-left and
+            farthest-right modeled doors. Choose which end to record first; the
+            other door is paired automatically. Stand still at each door until
+            recording finishes.
           </p>
+          {points.length < 2 && (
+            <p role="alert" className="status-warning">
+              This floor needs two separated modeled doors for GPS calibration.
+              Use Point and direction for a known location.
+            </p>
+          )}
           {saved && (
             <p className="status-line">
-              A GPS alignment is saved on this device. A new attempt needs fresh
+              A GPS alignment is saved for this floor. A new attempt needs fresh
               recordings at both points; old readings are not reused.
             </p>
           )}
@@ -298,14 +286,10 @@ export default function GpsLocationSetup({
             <label>
               First location
               <select
-                value={firstId}
+                value={firstPoint?.id ?? ""}
                 disabled={busy !== null}
                 onChange={(e) => {
                   setFirstId(e.target.value);
-                  if (secondId === e.target.value)
-                    setSecondId(
-                      points.find((p) => p.id !== e.target.value)?.id ?? "",
-                    );
                   setFirst(null);
                   setSecond(null);
                   setCandidate(null);
@@ -314,13 +298,13 @@ export default function GpsLocationSetup({
               >
                 {points.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.label}
+                    {doorLabel(p)}
                   </option>
                 ))}
               </select>
             </label>
             <button
-              disabled={busy !== null || !firstId}
+              disabled={busy !== null || !firstPoint}
               onClick={() => void record(1)}
             >
               {busy === 1
@@ -347,29 +331,16 @@ export default function GpsLocationSetup({
             <span className="gps-step-number">2</span>
             <label>
               Second location
-              <select
-                value={secondId}
-                disabled={busy !== null}
-                onChange={(e) => {
-                  setSecondId(e.target.value);
-                  setSecond(null);
-                  setCandidate(null);
-                  setError("");
-                }}
-              >
-                {points
-                  .filter((p) => p.id !== firstId)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label}
-                    </option>
-                  ))}
+              <select value={secondPoint?.id ?? ""} disabled>
+                {secondPoint && (
+                  <option value={secondPoint.id}>
+                    {doorLabel(secondPoint)}
+                  </option>
+                )}
               </select>
             </label>
             <button
-              disabled={
-                busy !== null || !first || !secondId || firstId === secondId
-              }
+              disabled={busy !== null || !first || !secondPoint}
               onClick={() => void record(2)}
             >
               {busy === 2
@@ -401,7 +372,7 @@ export default function GpsLocationSetup({
             <div ref={summary} className="gps-fit-summary" role="status">
               <strong>
                 {modelFallback
-                  ? sameRoomDoors
+                  ? doorPair
                     ? "Door alignment ready from the model"
                     : "Known-point alignment ready"
                   : "Location calibration ready"}
@@ -429,10 +400,10 @@ export default function GpsLocationSetup({
                       onChange={(e) => setConfirmedId(e.target.value)}
                     >
                       <option value={first.point.id}>
-                        {first.point.label}
+                        {doorLabel(first.point)}
                       </option>
                       <option value={second.point.id}>
-                        {second.point.label}
+                        {doorLabel(second.point)}
                       </option>
                     </select>
                   </label>
@@ -441,7 +412,7 @@ export default function GpsLocationSetup({
                     className="primary-sheet-action"
                     onClick={() => onUsePoint(confirmedPoint, facing)}
                   >
-                    {sameRoomDoors
+                    {doorPair
                       ? "Use this door position"
                       : "Use this model point"}
                   </button>
@@ -464,12 +435,6 @@ export default function GpsLocationSetup({
                       </p>
                     )}
                   </details>
-                  <button
-                    className="secondary-button"
-                    onClick={useFartherPoints}
-                  >
-                    Choose farther-apart GPS points
-                  </button>
                 </>
               ) : candidate ? (
                 <>

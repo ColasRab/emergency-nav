@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 import sharp from "sharp";
 import {
   calibrateGps,
+  calibrationLeft,
+  calibrationRight,
   choosePlace,
   chooseDestination,
   installGps,
@@ -69,7 +71,7 @@ test("compact window keeps only the map, camera and essential controls", async (
   );
 });
 
-test("two Marsden door GPS records calibrate, track and persist without any QR step", async ({
+test("floor-end door GPS records calibrate, track and persist without any QR step", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -134,6 +136,15 @@ test("two Marsden door GPS records calibrate, track and persist without any QR s
   ).toBeVisible();
   await expect(page.getByTestId("estimated-place-name")).toHaveText(
     "Position not set",
+  );
+  await page.getByRole("button", { name: "Use GPS", exact: true }).click();
+  const otherFloorSetup = page.getByRole("dialog", {
+    name: "Calibrate by location",
+    exact: true,
+  });
+  await expect(otherFloorSetup).toBeVisible();
+  await expect(otherFloorSetup.getByLabel("First location")).toHaveValue(
+    calibrationLeft.id.replace("-f1-", "-f0-"),
   );
   expect(errors).toEqual([]);
 });
@@ -208,7 +219,7 @@ test("a route reaches the selected room corner point by point and changes destin
   await expect(next).toBeVisible();
 });
 
-test("identical GPS fixes do not create a bogus ratio and first-point reversal remains usable", async ({
+test("identical GPS fixes keep model door confirmation available and permit reversing the two endpoints", async ({
   page,
 }) => {
   await installGps(page);
@@ -217,34 +228,33 @@ test("identical GPS fixes do not create a bogus ratio and first-point reversal r
     .getByRole("button", { name: "Calibrate GPS", exact: true })
     .click();
   const dialog = page.getByRole("dialog", { name: "Calibrate by location" });
-  await dialog
-    .getByLabel("First location")
-    .selectOption({ label: "Marsden · Left door" });
-  await expect(dialog.getByLabel("Second location")).not.toHaveValue(
-    `${marsden.id}:door:1`,
+  await dialog.getByLabel("First location").selectOption(calibrationRight.id);
+  await expect(dialog.getByLabel("Second location")).toHaveValue(
+    calibrationLeft.id,
   );
-  await dialog
-    .getByLabel("First location")
-    .selectOption({ label: "Marsden · Right door" });
-  await dialog
-    .getByLabel("Second location")
-    .selectOption({ label: "Marsden · Left door" });
+  await dialog.getByLabel("First location").selectOption(calibrationLeft.id);
+  await expect(dialog.getByLabel("Second location")).toHaveValue(
+    calibrationRight.id,
+  );
   await dialog
     .getByRole("button", { name: "Record GPS at first point", exact: true })
     .click();
-  await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(1);
+  await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(1, {
+    timeout: 12000,
+  });
   await dialog
     .getByRole("button", { name: "Record GPS at second point", exact: true })
     .click();
   await expect(
     dialog.getByText("Door alignment ready from the model", { exact: true }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 12000 });
   await expect(dialog.getByRole("alert")).toHaveCount(0);
   await dialog
     .getByRole("button", { name: "Use this door position", exact: true })
     .click();
-  await expect(page.getByTestId("estimated-place-region")).toHaveText(
-    "Left door",
+  await expect(page.getByTestId("estimated-place-region")).toHaveText("Door");
+  await expect(page.getByTestId("estimated-place-name")).toHaveText(
+    calibrationRight.roomLabel,
   );
   await expect(
     page.getByRole("button", { name: "Use GPS", exact: true }),
@@ -367,26 +377,30 @@ test("poor GPS reports low confidence while permission denial leaves manual loca
   await expect(page.getByTestId("estimated-place-region")).toHaveText(
     "Right door",
   );
-  await moveGps(page, rightDoor[0], rightDoor[1], 8);
+  await moveGps(page, calibrationLeft.model[0], calibrationLeft.model[1], 8);
   await page
     .getByRole("button", { name: "Calibrate GPS", exact: true })
     .click();
   dialog = page.getByRole("dialog", { name: "Calibrate by location" });
-  await dialog
-    .getByLabel("First location")
-    .selectOption({ label: "Marsden · Right door" });
-  await dialog
-    .getByLabel("Second location")
-    .selectOption({ label: "Marsden · Left door" });
+  await expect(dialog.getByLabel("First location")).toHaveValue(
+    calibrationLeft.id,
+  );
+  await expect(dialog.getByLabel("Second location")).toHaveValue(
+    calibrationRight.id,
+  );
   await dialog
     .getByRole("button", { name: "Record GPS at first point", exact: true })
     .click();
-  await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(1);
-  await moveGps(page, leftDoor[0], leftDoor[1], 8);
+  await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(1, {
+    timeout: 12000,
+  });
+  await moveGps(page, calibrationRight.model[0], calibrationRight.model[1], 8);
   await dialog
     .getByRole("button", { name: "Record GPS at second point", exact: true })
     .click();
-  await expect(dialog.getByText(/Low GPS confidence/)).toBeVisible();
+  await expect(dialog.getByText(/Low GPS confidence/)).toBeVisible({
+    timeout: 12000,
+  });
   await expect(dialog.locator(".gps-fit-summary")).toBeInViewport({
     ratio: 0.5,
   });
@@ -404,29 +418,17 @@ test("poor GPS reports low confidence while permission denial leaves manual loca
   await expect(
     dialog.getByRole("button", { name: "Use this door position", exact: true }),
   ).toBeEnabled();
+  await expect(
+    dialog.getByLabel("First location").locator("option"),
+  ).toHaveCount(2);
+  await expect(dialog.getByLabel("Second location")).toBeDisabled();
   await page.screenshot({
     path: "reports/gps-calibration-points.png",
     fullPage: true,
   });
-  await dialog
-    .getByRole("button", {
-      name: "Choose farther-apart GPS points",
-      exact: true,
-    })
-    .click();
-  await expect(dialog.getByLabel("First location")).not.toHaveValue(
-    marsden.id + ":door:0",
-  );
-  await expect(
-    dialog.getByRole("button", {
-      name: "Record GPS at second point",
-      exact: true,
-    }),
-  ).toBeDisabled();
-  await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(0);
 });
 
-test("nearby GPS readings still allow confirmation of either modeled door", async ({
+test("unresolved GPS still allows confirmation of either permitted floor-end door", async ({
   page,
 }) => {
   await installGps(page, 7.4);
@@ -440,18 +442,24 @@ test("nearby GPS readings still allow confirmation of either modeled door", asyn
     exact: true,
   });
   await expect(dialog.getByLabel("First location")).toHaveValue(
-    marsden.id + ":door:0",
+    calibrationLeft.id,
   );
   await expect(dialog.getByLabel("Second location")).toHaveValue(
-    marsden.id + ":door:1",
+    calibrationRight.id,
   );
+  await moveGps(page, calibrationLeft.model[0], calibrationLeft.model[1], 7.4);
   await dialog
     .getByRole("button", { name: "Record GPS at first point", exact: true })
     .click();
   await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(1, {
     timeout: 12000,
   });
-  await moveGps(page, rightDoor[0] - 0.25, rightDoor[1], 7.4);
+  await moveGps(
+    page,
+    calibrationLeft.model[0] + 0.25,
+    calibrationLeft.model[1],
+    7.4,
+  );
   await dialog
     .getByRole("button", { name: "Record GPS at second point", exact: true })
     .click();
@@ -461,14 +469,15 @@ test("nearby GPS readings still allow confirmation of either modeled door", asyn
   await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(2);
   await dialog
     .getByLabel("I am now standing at")
-    .selectOption({ label: "Marsden · Right door" });
+    .selectOption(calibrationLeft.id);
   await dialog.getByLabel("Phone is pointing toward").selectOption("90");
   await dialog
     .getByRole("button", { name: "Use this door position", exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByTestId("estimated-place-region")).toHaveText(
-    "Right door",
+  await expect(page.getByTestId("estimated-place-region")).toHaveText("Door");
+  await expect(page.getByTestId("estimated-place-name")).toHaveText(
+    calibrationLeft.roomLabel,
   );
   await expect(
     page.getByRole("button", { name: "Use GPS", exact: true }),
@@ -476,12 +485,92 @@ test("nearby GPS readings still allow confirmation of either modeled door", asyn
   await expect(
     page.getByRole("button", { name: "Start navigation", exact: true }),
   ).toBeEnabled();
-  const storedGps = await page.evaluate(() =>
-    Object.keys(localStorage).filter(
-      (k) => k.startsWith("wayfinder:location-gps:") && k.endsWith(":v2"),
+  expect(
+    await page.evaluate(() =>
+      Object.keys(localStorage).filter(
+        (k) => k.startsWith("wayfinder:location-gps:") && k.endsWith(":v2"),
+      ),
     ),
-  );
-  expect(storedGps).toEqual([]);
+  ).toEqual([]);
+});
+
+test("every floor limits calibration to exactly its two outermost actual doors", async ({
+  page,
+}) => {
+  await ready(page);
+  const cases = [
+    {
+      building: "admin",
+      floor: "0",
+      left: "Stock Room",
+      right: "IT Hub",
+      prefix: "admin-f0-",
+    },
+    {
+      building: "ynares",
+      floor: "0",
+      left: "Male Comfort Room",
+      right: "Female Comfort Room",
+      prefix: "ynares-f0-",
+    },
+    {
+      building: "ynares",
+      floor: "1",
+      left: "Male Comfort Room",
+      right: "Female Comfort Room",
+      prefix: "ynares-f1-",
+    },
+    {
+      building: "ynares",
+      floor: "2",
+      left: "Male Comfort Room",
+      right: "Female Comfort Room",
+      prefix: "ynares-f2-",
+    },
+  ];
+  for (const c of cases) {
+    await page
+      .getByRole("combobox", { name: "Building", exact: true })
+      .selectOption(c.building);
+    await expect(
+      page.getByRole("combobox", { name: "Floor", exact: true }),
+    ).toBeEnabled();
+    await page
+      .getByRole("combobox", { name: "Floor", exact: true })
+      .selectOption(c.floor);
+    await page
+      .getByRole("button", { name: "Calibrate GPS", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog", {
+      name: "Calibrate by location",
+      exact: true,
+    });
+    const first = dialog.getByLabel("First location"),
+      second = dialog.getByLabel("Second location");
+    await expect(first.locator("option")).toHaveText([
+      "Farthest left door — " + c.left + " · Door",
+      "Farthest right door — " + c.right + " · Door",
+    ]);
+    const leftId = await first.locator("option").nth(0).getAttribute("value");
+    const rightId = await first.locator("option").nth(1).getAttribute("value");
+    expect(leftId).toContain(c.prefix);
+    expect(rightId).toContain(c.prefix);
+    await expect(first).toHaveValue(leftId!);
+    await expect(second).toHaveValue(rightId!);
+    await expect(second).toBeDisabled();
+    await first.selectOption(rightId!);
+    await expect(second).toHaveValue(leftId!);
+    await expect(
+      dialog.getByRole("option", { name: /Marsden|stairs|Back right/ }),
+    ).toHaveCount(0);
+    await page.screenshot({
+      path: "reports/calibration-" + c.building + "-floor-" + c.floor + ".png",
+      fullPage: true,
+    });
+    await dialog
+      .getByRole("button", { name: "Close panel", exact: true })
+      .click();
+  }
 });
 
 test("phone window fits without scrolling and live-camera mode retains the location HUD", async ({

@@ -9,8 +9,8 @@ import {
   gpsModelHeadingOffset,
   gpsToModelPosition,
   matchGpsToModel,
-  recommendedCalibrationPair,
-  roomCalibrationPair,
+  floorCalibrationDoorPair,
+  isFloorCalibrationPair,
   GpsBaselineError,
   calibrationKey,
   readLocationCalibration,
@@ -19,6 +19,7 @@ import {
 import { isRoomPointWalkable } from "../lib/navigation/roomStart";
 import { nextInstruction } from "../lib/voice/instructionBuilder";
 import raw from "../public/models/ynares.json";
+import rawAdmin from "../public/models/admin.json";
 import rawGraph from "../public/graphs/ynares-rooms.json";
 const config = buildingSchema.parse(raw),
   graph = parseGraph(rawGraph),
@@ -44,36 +45,77 @@ function sample(
   };
 }
 describe("two named GPS locations", () => {
-  it("offers Marsden's right and left model doors without requiring a long GPS baseline", () => {
-    expect(
-      roomCalibrationPair(points.filter((p) => p.floor === 1)).map((p) => p.id),
-    ).toEqual([right.id, left.id]);
+  for (const rawBuilding of [rawAdmin, raw]) {
+    const building = buildingSchema.parse(rawBuilding);
+    for (const floor of building.floors) {
+      it(
+        building.id +
+          " floor " +
+          floor.index +
+          ": allows exactly the minimum/maximum-X door points",
+        () => {
+          const pair = floorCalibrationDoorPair(building, floor.index);
+          const allDoors = building
+            .rooms!.filter((room) => room.floor === floor.index)
+            .flatMap((room) => room.doors);
+          expect(pair).toHaveLength(2);
+          expect(pair[0].model[0]).toBe(Math.min(...allDoors.map((p) => p[0])));
+          expect(pair[1].model[0]).toBe(Math.max(...allDoors.map((p) => p[0])));
+          expect(
+            pair.every(
+              (p) =>
+                p.floor === floor.index && p.nodeId !== undefined && p.roomId,
+            ),
+          ).toBe(true);
+          expect(pair.map((p) => p.label)).toEqual(
+            building.id === "admin"
+              ? ["Stock Room · Door", "IT Hub · Door"]
+              : ["Male Comfort Room · Door", "Female Comfort Room · Door"],
+          );
+        },
+      );
+    }
+  }
+  it("does not substitute a corridor or stair point when a floor has no door pair", () => {
+    expect(floorCalibrationDoorPair(config, 99)).toEqual([]);
+    expect(floorCalibrationDoorPair({ ...config, rooms: [] }, 1)).toEqual([]);
   });
-  it("starts the pair at the chosen door and never invents a second door from corridor nodes", () => {
-    expect(roomCalibrationPair(points, left.id).map((p) => p.id)).toEqual([
-      left.id,
-      right.id,
-    ]);
+  it("accepts either order of the two end doors and rejects inner doors or changed coordinates", () => {
+    const pair = floorCalibrationDoorPair(config, 1);
+    expect(isFloorCalibrationPair(config, pair[0], pair[1])).toBe(true);
+    expect(isFloorCalibrationPair(config, pair[1], pair[0])).toBe(true);
+    expect(isFloorCalibrationPair(config, right, left)).toBe(false);
     expect(
-      roomCalibrationPair([
-        { id: "hall", label: "Hall", floor: 1, model: [0, 0], nodeId: 42 },
-      ]),
-    ).toEqual([]);
+      isFloorCalibrationPair(config, pair[0], {
+        ...pair[1],
+        model: [pair[1].model[0] - 1, pair[1].model[1]],
+      }),
+    ).toBe(false);
   });
-  it("recommends identifiable points across the floor instead of two nearby room doors", () => {
-    const pair = recommendedCalibrationPair(
-      points.filter((p) => p.floor === 1),
-    );
-    expect(pair).toHaveLength(2);
-    expect(pair.every((p) => p.floor === 1 && p.nodeId !== undefined)).toBe(
-      true,
-    );
-    expect(
-      Math.hypot(
-        pair[1].model[0] - pair[0].model[0],
-        pair[1].model[1] - pair[0].model[1],
-      ),
-    ).toBeGreaterThan(25);
+  it("keeps saved calibration separate per floor and refuses an older inner-room pair", () => {
+    const pair = floorCalibrationDoorPair(config, 1),
+      a = sample(pair[0]),
+      b = sample(pair[1]);
+    a.gps.accuracy = b.gps.accuracy = 0.1;
+    const fit = calibrateLocations(config, a, b);
+    const records = new Map([[calibrationKey(config, 1), JSON.stringify(fit)]]);
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => records.get(key) ?? null,
+    });
+    try {
+      expect(calibrationKey(config, 0)).not.toBe(calibrationKey(config, 1));
+      expect(readLocationCalibration(config, 1)?.first.point.id).toBe(
+        pair[0].id,
+      );
+      expect(readLocationCalibration(config, 0)).toBeNull();
+      records.set(
+        calibrationKey(config, 1),
+        JSON.stringify(calibrateLocations(config, sample(), sample(left))),
+      );
+      expect(readLocationCalibration(config, 1)).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
   it("does not mix a previous attempt's old first point with a new second capture", () => {
     const a = sample(),
@@ -86,8 +128,8 @@ describe("two named GPS locations", () => {
     const getItem = vi.fn(() => JSON.stringify({ ...fit, version: 1 }));
     vi.stubGlobal("localStorage", { getItem });
     try {
-      expect(calibrationKey(config)).toMatch(/:v2$/);
-      expect(readLocationCalibration(config)).toBeNull();
+      expect(calibrationKey(config, 1)).toMatch(/:floor-1:v2$/);
+      expect(readLocationCalibration(config, 1)).toBeNull();
     } finally {
       vi.unstubAllGlobals();
     }

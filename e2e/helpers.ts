@@ -3,6 +3,24 @@ import config from "../public/models/ynares.json";
 export const marsden = config.rooms.find((r) => r.label === "Marsden")!;
 export const rightDoor = [...marsden.doors].sort((a, b) => b[0] - a[0])[0];
 export const leftDoor = [...marsden.doors].sort((a, b) => a[0] - b[0])[0];
+const floorLeftRoom = config.rooms.find(
+  (r) => r.floor === 1 && r.label === "Male Comfort Room",
+)!;
+const floorRightRoom = config.rooms.find(
+  (r) => r.floor === 1 && r.label === "Female Comfort Room",
+)!;
+export const calibrationLeft = {
+  id: floorLeftRoom.id + ":door:0",
+  label: floorLeftRoom.label + " · Door",
+  roomLabel: floorLeftRoom.label,
+  model: floorLeftRoom.doors[0],
+};
+export const calibrationRight = {
+  id: floorRightRoom.id + ":door:0",
+  label: floorRightRoom.label + " · Door",
+  roomLabel: floorRightRoom.label,
+  model: floorRightRoom.doors[0],
+};
 export function gpsAtModel(x: number, z: number, accuracy = 0.1) {
   const degrees = 180 / Math.PI,
     radius = 6378137;
@@ -150,14 +168,18 @@ export async function calibrateGps(page: Page, accuracy = 0.1, facing = 180) {
     name: "Calibrate by location",
     exact: true,
   });
-  await dialog
-    .getByLabel("First location")
-    .selectOption({ label: "Marsden · Right door" });
-  await dialog
-    .getByLabel("Second location")
-    .selectOption({ label: "Marsden · Left door" });
+  await dialog.getByLabel("First location").selectOption(calibrationLeft.id);
+  await moveGps(
+    page,
+    calibrationLeft.model[0],
+    calibrationLeft.model[1],
+    accuracy,
+  );
   await expect(dialog.getByLabel("First location")).toHaveValue(
-    `${marsden.id}:door:0`,
+    calibrationLeft.id,
+  );
+  await expect(dialog.getByLabel("Second location")).toHaveValue(
+    calibrationRight.id,
   );
   await dialog
     .getByRole("button", { name: "Record GPS at first point", exact: true })
@@ -165,7 +187,12 @@ export async function calibrateGps(page: Page, accuracy = 0.1, facing = 180) {
   await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(1, {
     timeout: 12000,
   });
-  await moveGps(page, leftDoor[0], leftDoor[1], accuracy);
+  await moveGps(
+    page,
+    calibrationRight.model[0],
+    calibrationRight.model[1],
+    accuracy,
+  );
   await dialog
     .getByRole("button", { name: "Record GPS at second point", exact: true })
     .click();
@@ -182,8 +209,9 @@ export async function calibrateGps(page: Page, accuracy = 0.1, facing = 180) {
   await expect(
     page.getByRole("button", { name: "Use GPS", exact: true }),
   ).toBeVisible();
-  await expect(page.getByTestId("estimated-place-region")).toHaveText(
-    "Left door",
+  await expect(page.getByTestId("estimated-place-region")).toHaveText("Door");
+  await expect(page.getByTestId("estimated-place-name")).toHaveText(
+    calibrationRight.roomLabel,
   );
   await expect(page.locator(".estimated-place-basis")).toContainText(
     "Confirmed on model",

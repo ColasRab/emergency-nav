@@ -28,6 +28,7 @@ import {
   matchGpsToModel,
   modelPointToGraph,
   readLocationCalibration,
+  isFloorCalibrationPair,
   type LocationCalibration,
   type LocationPoint,
 } from "@/lib/position/gpsCalibration";
@@ -87,7 +88,10 @@ export default function NavigationApp() {
   }, []);
   useEffect(() => {
     if (!config) return;
-    setCalibration(readLocationCalibration(config));
+    setCalibration(readLocationCalibration(config, floor));
+  }, [config?.id, config?.modelRevision, floor]);
+  useEffect(() => {
+    if (!config) return;
     if (new URLSearchParams(location.search).get("setup") === "gps")
       setSheet("gps");
   }, [config?.id, config?.modelRevision]);
@@ -253,6 +257,16 @@ export default function NavigationApp() {
       setSheet("gps");
       return;
     }
+    if (
+      chosen.first.point.floor !== targetFloor ||
+      !isFloorCalibrationPair(config, chosen.first.point, chosen.second.point)
+    ) {
+      setMessage(
+        "Record the farthest-left and farthest-right doors on this floor before using GPS.",
+      );
+      setSheet("gps");
+      return;
+    }
     if (!("geolocation" in navigator)) {
       setMessage("Location access is unavailable. Use Set location.");
       return;
@@ -341,12 +355,14 @@ export default function NavigationApp() {
     if (
       !config ||
       next.lowConfidence ||
+      next.first.point.floor !== floor ||
+      !isFloorCalibrationPair(config, next.first.point, next.second.point) ||
       Date.now() - next.second.gps.timestamp > 60_000
     )
       return;
     stopGps();
     try {
-      localStorage.setItem(calibrationKey(config), JSON.stringify(next));
+      localStorage.setItem(calibrationKey(config, floor), JSON.stringify(next));
     } catch {
       setMessage(
         "Calibration is active for this session; device storage is unavailable.",
@@ -668,6 +684,7 @@ export default function NavigationApp() {
           )}
           {sheet === "gps" && (
             <GpsLocationSetup
+              key={id + ":" + floor}
               config={config}
               graph={graph}
               floor={floor}
@@ -678,12 +695,12 @@ export default function NavigationApp() {
               onClear={() => {
                 stopGps();
                 try {
-                  localStorage.removeItem(calibrationKey(config));
+                  localStorage.removeItem(calibrationKey(config, floor));
                 } catch {
                   /* Session state is still cleared. */
                 }
                 setCalibration(null);
-                setMessage("Saved GPS calibration cleared.");
+                setMessage("Saved GPS calibration cleared for this floor.");
               }}
             />
           )}
