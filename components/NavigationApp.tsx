@@ -63,6 +63,7 @@ export default function NavigationApp() {
     [voiceEvent, setVoiceEvent] = useState<VoiceEvent | null>(null),
     [now, setNow] = useState(Date.now());
   const watch = useRef<number | null>(null),
+    alignmentRequestedAt = useRef(0),
     watchEpoch = useRef(0),
     previousPath = useRef<number[] | null>(null),
     eventId = useRef(0),
@@ -94,6 +95,7 @@ export default function NavigationApp() {
     if (
       pendingFacing !== null &&
       compass.reading.current &&
+      compass.reading.current.at >= alignmentRequestedAt.current &&
       Date.now() - compass.reading.current.at < 3000
     ) {
       setManualOffset(
@@ -101,7 +103,7 @@ export default function NavigationApp() {
       );
       setPendingFacing(null);
     }
-  }, [compass.heading, pendingFacing]);
+  }, [compass.heading, pendingFacing, now]);
   const usableCalibration =
     calibration && !calibration.lowConfidence ? calibration : null;
   const headingOffset =
@@ -111,7 +113,9 @@ export default function NavigationApp() {
       compass.reading.current && now - compass.reading.current.at < 3000
         ? compass.heading
         : null,
-    aligned = usableCalibration !== null || manualOffset !== null,
+    aligned =
+      pendingFacing === null &&
+      (usableCalibration !== null || manualOffset !== null),
     heading =
       rawHeading !== null && aligned
         ? normalizeSignedDegrees(rawHeading + headingOffset)
@@ -232,6 +236,7 @@ export default function NavigationApp() {
     setLastPointId(point.id);
     setFallbackFacing(facing);
     setManualOffset(null);
+    alignmentRequestedAt.current = Date.now();
     setPendingFacing(facing);
     setGpsAccuracy(null);
     setLastGpsAt(null);
@@ -263,7 +268,6 @@ export default function NavigationApp() {
     setGpsRunning(true);
     setLastGpsAt(null);
     setMessage("Waiting for GPS location…");
-    setPendingFacing(null);
     void compass.enable();
     watch.current = navigator.geolocation.watchPosition(
       (position) => {
@@ -333,8 +337,13 @@ export default function NavigationApp() {
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 },
     );
   }
-  function applyCalibration(next: LocationCalibration) {
-    if (!config || next.lowConfidence) return;
+  function applyCalibration(next: LocationCalibration, facing: number) {
+    if (
+      !config ||
+      next.lowConfidence ||
+      Date.now() - next.second.gps.timestamp > 60_000
+    )
+      return;
     stopGps();
     try {
       localStorage.setItem(calibrationKey(config), JSON.stringify(next));
@@ -344,13 +353,20 @@ export default function NavigationApp() {
       );
     }
     setCalibration(next);
+    setManualOffset(null);
+    alignmentRequestedAt.current = Date.now();
+    setPendingFacing(facing);
+    setFallbackFacing(facing);
     putAt(next.second.point.model, next.second.point.floor);
     setLastPointId(next.second.point.id);
     setSheet(null);
     setGpsAccuracy(null);
     setLastGpsAt(null);
+    void compass.enable();
     setMessage(
-      `${next.second.point.label} confirmed. Calibration saved; GPS stays off until you choose Use GPS.`,
+      assessGpsPosition(next.second.gps, next).usable
+        ? `${next.second.point.label} confirmed. Calibration saved; GPS stays off until you choose Use GPS.`
+        : `${next.second.point.label} and facing confirmed. GPS alignment saved, but its readings are too coarse for room guidance. Confirm your points as you walk.`,
     );
   }
   function changeBuilding(next: BuildingId) {
@@ -657,6 +673,7 @@ export default function NavigationApp() {
               floor={floor}
               saved={calibration}
               onApply={applyCalibration}
+              onUsePoint={chooseLocation}
               onClear={() => {
                 stopGps();
                 try {

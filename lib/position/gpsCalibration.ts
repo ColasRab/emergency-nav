@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { BuildingConfig } from "../buildings";
 import type { NavGraph } from "../astar";
 import type { GpsFix } from "../calibration";
+import { GPS_CAPTURE_READINGS, GPS_CAPTURE_SPAN_MS } from "./gpsCapture";
 import {
   applySimilarity,
   invertSimilarity,
@@ -39,10 +40,19 @@ const pointSchema = z.object({
   roomId: z.string().optional(),
   nodeId: z.number().int().optional(),
 });
-const sampleSchema = z.object({ point: pointSchema, gps: gpsFixSchema });
+const sampleSchema = z.object({
+  point: pointSchema,
+  gps: gpsFixSchema,
+  quality: z.object({
+    readings: z.number().int().min(GPS_CAPTURE_READINGS),
+    discarded: z.number().int().nonnegative(),
+    spreadM: z.number().finite().nonnegative(),
+    durationMs: z.number().finite().min(GPS_CAPTURE_SPAN_MS),
+  }),
+});
 export type GpsLocationSample = z.infer<typeof sampleSchema>;
 export const locationCalibrationSchema = z.object({
-  version: z.literal(1),
+  version: z.literal(2),
   buildingId: z.enum(["admin", "ynares"]),
   revision: z.string(),
   first: sampleSchema,
@@ -117,6 +127,25 @@ export function buildingLocationPoints(
   return points;
 }
 
+/** Prefer an identifiable pair spanning the floor rather than two nearby doors. */
+export function recommendedCalibrationPair(
+  points: LocationPoint[],
+): LocationPoint[] {
+  const candidates = points.filter((p) => p.nodeId !== undefined);
+  let best: LocationPoint[] = [],
+    distance = -1;
+  for (const a of candidates)
+    for (const b of candidates) {
+      if (a.floor !== b.floor || a.id === b.id) continue;
+      const d = Math.hypot(a.model[0] - b.model[0], a.model[1] - b.model[1]);
+      if (d > distance) {
+        best = [a, b];
+        distance = d;
+      }
+    }
+  return best.sort((a, b) => a.model[0] - b.model[0]);
+}
+
 export function calibrateLocations(
   config: BuildingConfig,
   first: GpsLocationSample,
@@ -128,6 +157,10 @@ export function calibrateLocations(
     throw new Error("Choose a different second location.");
   if (first.point.floor !== second.point.floor)
     throw new Error("Record both locations on the same floor.");
+  if (Math.abs(second.gps.timestamp - first.gps.timestamp) > 10 * 60 * 1000)
+    throw new Error(
+      "The first recording is too old for this attempt. Record both points again.",
+    );
   const [east, north] = lngLatToEnu(
       [second.gps.longitude, second.gps.latitude],
       [first.gps.longitude, first.gps.latitude],
@@ -147,7 +180,7 @@ export function calibrateLocations(
       ((Math.atan2(north, -east) - Math.atan2(dz, dx)) * 180) / Math.PI,
     );
   return locationCalibrationSchema.parse({
-    version: 1,
+    version: 2,
     buildingId: config.id,
     revision: config.modelRevision ?? "scan",
     first,
@@ -235,7 +268,7 @@ export function assessGpsPosition(
   };
 }
 export function calibrationKey(config: BuildingConfig): string {
-  return `wayfinder:location-gps:${config.id}:${config.modelRevision ?? "scan"}:v1`;
+  return `wayfinder:location-gps:${config.id}:${config.modelRevision ?? "scan"}:v2`;
 }
 export function readLocationCalibration(
   config: BuildingConfig,

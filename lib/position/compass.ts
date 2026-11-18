@@ -33,6 +33,10 @@ export function useCompass() {
           handler.current,
         );
       }
+      // A new alignment must use a new sensor sample, without smoothing in the old pose.
+      reading.current = null;
+      setHeading(null);
+      if (timer.current) clearTimeout(timer.current);
       handler.current = (raw: Event) => {
         const value = deviceHeading(
           raw as DeviceOrientationEvent & { webkitCompassHeading?: number },

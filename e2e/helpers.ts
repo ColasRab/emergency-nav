@@ -142,7 +142,7 @@ export async function moveGps(
     gpsAtModel(x, z, accuracy),
   );
 }
-export async function calibrateGps(page: Page, accuracy = 0.1) {
+export async function calibrateGps(page: Page, accuracy = 0.1, facing = 180) {
   await page
     .getByRole("button", { name: "Calibrate GPS", exact: true })
     .click();
@@ -150,20 +150,31 @@ export async function calibrateGps(page: Page, accuracy = 0.1) {
     name: "Calibrate by location",
     exact: true,
   });
+  await dialog
+    .getByLabel("First location")
+    .selectOption({ label: "Marsden · Right door" });
+  await dialog
+    .getByLabel("Second location")
+    .selectOption({ label: "Marsden · Left door" });
   await expect(dialog.getByLabel("First location")).toHaveValue(
     `${marsden.id}:door:0`,
   );
   await dialog
     .getByRole("button", { name: "Record GPS at first point", exact: true })
     .click();
-  await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(1);
+  await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(1, {
+    timeout: 12000,
+  });
   await moveGps(page, leftDoor[0], leftDoor[1], accuracy);
   await dialog
     .getByRole("button", { name: "Record GPS at second point", exact: true })
     .click();
   await expect(
     dialog.getByText("Location calibration ready", { exact: true }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 12000 });
+  await dialog
+    .getByLabel("Phone is pointing toward")
+    .selectOption(String(facing));
   await dialog
     .getByRole("button", { name: "Use this calibration", exact: true })
     .click();

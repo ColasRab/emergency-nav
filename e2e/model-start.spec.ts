@@ -242,6 +242,104 @@ test("identical GPS fixes do not create a bogus ratio and first-point reversal r
   ).toBeDisabled();
 });
 
+test("saved calibration starts a fresh attempt and saving realigns the current phone facing", async ({
+  page,
+}) => {
+  await installGps(page);
+  await ready(page);
+  await choosePlace(page);
+  await sendCompass(page, 180);
+  await calibrateGps(page, 0.1, 90);
+  await expect
+    .poll(async () => {
+      await sendCompass(page, 270);
+      const transform = await page
+        .getByTestId("minimap-user")
+        .getAttribute("transform");
+      const angle = Number(transform?.match(/rotate\(([^)]+)\)/)?.[1]);
+      return Math.round(((angle % 360) + 360) % 360);
+    })
+    .toBe(90);
+  await page
+    .getByRole("button", { name: "Calibrate GPS", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "Calibrate by location",
+    exact: true,
+  });
+  await expect(
+    dialog.getByText(/A new attempt needs fresh recordings/),
+  ).toBeVisible();
+  await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(0);
+  await expect(
+    dialog.getByRole("button", { name: "Use this calibration", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    dialog.getByRole("button", {
+      name: "Record GPS at second point",
+      exact: true,
+    }),
+  ).toBeDisabled();
+});
+
+test("GPS capture can be cancelled and point-and-direction alignment works without GPS permission", async ({
+  page,
+}) => {
+  await installGps(page);
+  await ready(page);
+  await page
+    .getByRole("button", { name: "Calibrate GPS", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "Calibrate by location",
+    exact: true,
+  });
+  await dialog
+    .getByRole("button", { name: "Record GPS at first point", exact: true })
+    .click();
+  await dialog
+    .getByRole("button", { name: "Cancel GPS recording", exact: true })
+    .click();
+  await expect(
+    dialog.getByRole("button", {
+      name: "Record GPS at first point",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(0);
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event("wayfinder-test-gps-denied")),
+  );
+  await dialog
+    .getByRole("button", { name: "Point and direction", exact: true })
+    .click();
+  await dialog.getByLabel("Room or area").selectOption({ label: "Marsden" });
+  await dialog
+    .getByLabel("Standing position")
+    .selectOption({ label: "Marsden · Back right" });
+  await dialog.getByLabel("Phone is pointing toward").selectOption("0");
+  await dialog
+    .getByRole("button", { name: "Use this location", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId("estimated-place-region")).toHaveText(
+    "Back right",
+  );
+  await expect(
+    page.getByRole("button", { name: "Use GPS", exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(async () => {
+      await sendCompass(page, 270);
+      const transform = await page
+        .getByTestId("minimap-user")
+        .getAttribute("transform");
+      const angle = Number(transform?.match(/rotate\(([^)]+)\)/)?.[1]);
+      return Math.round(((angle % 360) + 360) % 360);
+    })
+    .toBe(0);
+});
+
 test("poor GPS reports low confidence while permission denial leaves manual location usable", async ({
   page,
 }) => {
@@ -266,6 +364,12 @@ test("poor GPS reports low confidence while permission denial leaves manual loca
     .click();
   dialog = page.getByRole("dialog", { name: "Calibrate by location" });
   await dialog
+    .getByLabel("First location")
+    .selectOption({ label: "Marsden · Right door" });
+  await dialog
+    .getByLabel("Second location")
+    .selectOption({ label: "Marsden · Left door" });
+  await dialog
     .getByRole("button", { name: "Record GPS at first point", exact: true })
     .click();
   await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(1);
@@ -274,6 +378,20 @@ test("poor GPS reports low confidence while permission denial leaves manual loca
     .getByRole("button", { name: "Record GPS at second point", exact: true })
     .click();
   await expect(dialog.getByText(/Low GPS confidence/)).toBeVisible();
+  await expect(dialog.locator(".gps-fit-summary")).toBeInViewport({
+    ratio: 0.5,
+  });
+  await expect(
+    dialog.getByRole("button", { name: "Point and direction", exact: true }),
+  ).toBeInViewport();
+  await dialog
+    .getByRole("button", { name: "Close panel", exact: true })
+    .click({ trial: true });
+  const methods = await dialog.locator(".calibration-methods").boundingBox();
+  const close = await dialog
+    .getByRole("button", { name: "Close panel", exact: true })
+    .boundingBox();
+  expect(methods!.y).toBeGreaterThanOrEqual(close!.y + close!.height);
   await expect(
     dialog.getByRole("button", { name: "Use this calibration", exact: true }),
   ).toBeDisabled();

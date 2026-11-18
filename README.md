@@ -8,7 +8,7 @@ Indoor navigation for the Admin and Ynares buildings. The main page fits one cam
 2. For a known starting point, select **Set location**, choose a room and a place such as **Marsden · Right door**, then select **Use this location**. Corners and aisle positions are also available.
 3. Confirm which way the phone faces. Select **Set destination** and choose a specific door, clear room position, corridor point or stair landing, on any floor of this building. The gold marker is the destination.
 4. Select **Start navigation** for spoken directions and **Use camera** for the camera direction guide. Follow the modeled route. Select **Reached next point** only when physically there, or use **Set location** to confirm another named point. The model marker does not track walking in this mode.
-5. GPS is optional. Select **Calibrate GPS**, record two distinct locations on the same floor, and review their accuracy and baseline. Unreliable pairs cannot be saved. Saving a usable calibration confirms the second location and keeps GPS off. **Use GPS** explicitly starts approximate tracking; **Stop GPS** keeps the last estimate.
+5. To align at a known point without GPS, select **Calibrate GPS → Point and direction**. Choose your actual position, aim the phone in the chosen direction and confirm. Allow compass access for the camera arrow. For optional GPS alignment, choose **GPS two points** and stand still while each point collects at least five fresh readings. The defaults span the floor; nearby room doors may be too close. Before saving, stay at the second point and confirm the phone's facing direction. GPS stays off until **Use GPS** is selected.
 
 Choose floors manually. Changing floor stops GPS and clears the old position; select **Use GPS** again on the selected floor. The horizontal building calibration can be reused across its floors. Changing building selects that building's own saved calibration.
 
@@ -16,7 +16,7 @@ QR calibration has been removed from the active app. The former `/admin/anchors`
 
 ## How the two-point GPS alignment works
 
-Each named location has coordinates in the reconstructed model. The app records the phone's latitude, longitude, reported accuracy and timestamp at two distinct locations on the same floor. It calculates:
+Each named location has coordinates in the reconstructed model. Each point uses at least five fresh GPS fixes spanning four seconds, with a 20-second limit and a cancel button. Cached timestamps do not count. A robust center rejects isolated jumps only when at least five readings and 80% of the batch agree. The retained accuracy radius includes receiver uncertainty and observed spread; it is never divided by the number of readings. The two points must be recorded in the same attempt, no more than ten minutes apart. The app calculates:
 
 `model metres per GPS metre = model separation / GPS separation`
 
@@ -26,7 +26,7 @@ The app rejects low-confidence calibration when the baseline is no more than thr
 
 **Calibration does not improve the phone's GPS precision.** Indoor GPS can be too noisy to distinguish nearby doors or room corners. Two points fit a transform but do not validate the rest of an estimated floor plan. GPS displays an approximate area and an uncertainty circle, without assigning an exact room corner or door label, wall distances or an arrival announcement. Confirmed named points keep their model labels and are explicitly marked as requiring manual updates. **Set location** remains available when GPS cannot be used.
 
-GPS records are saved only in this device's browser, separately for each building/model revision. They are not uploaded to Supabase or committed to GitHub. Use **Clear saved calibration** in the calibration panel to remove the current building's setup.
+GPS records are saved only in this device's browser, separately for each building/model revision. The current format is version 2; earlier single-reading setups need to be recorded again. Reopening setup starts a fresh attempt and does not reuse old GPS samples or confirm an old position. A new second-point capture expires after one minute for position confirmation. Calibration records are not uploaded to Supabase or committed to GitHub. Use **Clear saved calibration** in the calibration panel to remove the current building's setup.
 
 The camera overlay uses GPS/manual position, compass heading and an assumed camera perspective. The model preview uses a 1.6 m eye height; the live overlay assumes a 60° vertical field of view. Camera images do not identify the room or provide visual/inertial motion tracking, depth occlusion or world-anchored AR. Android and iPhone hardware validation remains outstanding.
 

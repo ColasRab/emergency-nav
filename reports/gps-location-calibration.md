@@ -1,4 +1,6 @@
-# Point-to-point location and GPS precision - 17 November 2026
+# Point to point location and GPS calibration
+
+Updated 18 November 2026. Calibration now collects fresh stationary readings, keeps earlier saved samples out of new attempts, and explicitly aligns the phone's facing direction. **Calibrate GPS → Point and direction** provides alignment at a known model point when GPS is unsuitable. This mode still requires explicit progress confirmation while walking.
 
 The main page retains one camera/model window with a top-down map and essential controls. Previously, GPS errors up to 50 m could replace the known calibration point automatically. The resulting estimate could receive an exact room-corner or door label. That behavior has been removed.
 
@@ -10,11 +12,17 @@ The marker stays at the confirmed model point. **Reached next point** confirms a
 
 ## Optional GPS alignment
 
-Record two named positions on the same floor. Marsden's right and left doors remain defaults; an adequate baseline depends on actual accuracy readings. The fit maps GPS east/north to model X/Z using translation, rotation and scale. It does not survey the building or improve the GPS receiver.
+Record two named positions on the same floor. The default pair spans the floor instead of using two nearby room doors; Marsden's doors remain selectable. An adequate baseline depends on actual accuracy readings. Each capture polls fresh GPS fixes until at least five readings span four seconds. The capture can be cancelled and ends after at most 20 seconds. Cached or stale timestamps do not count, and late callbacks after cancellation are ignored.
+
+The local east/north median supplies a representative center. An isolated jump can be excluded only if at least five readings and 80% of the batch agree. The retained accuracy is the largest included receiver radius plus the observed spread; collecting more readings does not create a smaller claimed accuracy radius. Both captures must belong to the same attempt and be no more than ten minutes apart. The fit maps GPS east/north to model X/Z using translation, rotation and scale; it does not survey the building or improve receiver accuracy.
 
 A calibration cannot be saved when its baseline is no greater than three times the sum of endpoint accuracy radii, or its model/GPS scale ratio is outside 0.2-5. Indistinguishable coordinates and cross-floor pairs are rejected. Stored calibrations have confidence recalculated under current rules.
 
-Saving confirms the second named point and leaves GPS off. **Use GPS** explicitly starts tracking. Manual facing alignment takes precedence over GPS-derived compass alignment. Navigation distances and the assumed 1.6 m camera height retain estimated model units instead of being stretched by a noisy GPS ratio.
+Saving confirms the second named point and its chosen facing direction, and leaves GPS off. Remain at that point and aim the phone before confirming; a second-point capture older than one minute must be recorded again. An alignment whose GPS readings cannot support room guidance is labeled accordingly, even when its geometric fit can be saved. **Use GPS** explicitly starts tracking.
+
+The camera guide waits for a fresh compass reading before applying the chosen facing. It drops the old sensor pose from smoothing and preserves a pending alignment when GPS starts. **Point and direction** offers the same known-point alignment without GPS capture. Compass access is still needed for a camera arrow that follows phone direction. Navigation distances and the assumed 1.6 m camera height retain estimated model units instead of being stretched by a noisy GPS ratio.
+
+Saved alignments use version 2 with capture-quality metadata. Older single-reading alignments are ignored and must be recorded again. Reopening setup may retain point names but starts with no captured GPS samples and cannot reapply the old second point as the user's current location.
 
 ## Reading rejection
 
@@ -36,4 +44,4 @@ Horizontal room dimensions and furniture remain estimates from the supplied diag
 
 Unit checks cover both buildings' room destinations, same-room and cross-room/floor routing, identical endpoints, furniture avoidance, destination-room hazards, announcements, calibration noise, poor readings and distant extrapolation. Browser checks use synthetic GPS/camera inputs for confirmed progress, explicit GPS start, rejected readings, uncertainty display, saved calibration, compact layouts and existing reporting. No synthetic reports are written to the live database.
 
-Final verification: production build and strict TypeScript checking passed; all 83 unit checks and 14 browser checks passed. Browser results and current desktop/phone captures are stored in this reports folder.
+Final verification on 18 November 2026: production build and strict TypeScript checking passed; all 92 unit checks and 16 browser checks passed. Two targeted checks also passed after the final scrolling adjustment, including an unobstructed close button and visible fallback controls. New checks cover capture duration, cached timestamps, isolated jumps, cancellation, permission denial, saved-attempt reset, current-facing alignment and visible rejection feedback. Browser results and current desktop/phone captures are stored in this reports folder. These checks use synthetic sensor data; on-site accuracy remains unverified.

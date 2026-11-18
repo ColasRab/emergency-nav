@@ -822,7 +822,7 @@ main.navigation-shell {
   background: #15292fed;
   backdrop-filter: blur(12px);
   border-bottom: 1px solid #3d5555;
-  z-index: 1;
+  z-index: 2;
 }
 .app-sheet > header h2 {
   font-size: 1.05rem;
@@ -870,6 +870,34 @@ main.navigation-shell {
   font-weight: 600;
   margin-top: 6px;
 }
+.calibration-methods {
+  position: sticky;
+  top: 61px;
+  z-index: 1;
+  background: #152b32;
+  padding: 8px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.calibration-methods button,
+.gps-capture-progress button {
+  border: 1px solid #5c8278;
+  border-radius: 7px;
+  padding: 10px;
+  background: #192e35;
+  color: #e8f5df;
+}
+.calibration-methods button[aria-pressed="true"] {
+  background: #315447;
+  border-color: #9dd9af;
+}
+.gps-capture-progress {
+  padding: 10px;
+  color: #bfe0c9;
+  font-size: 0.8rem;
+}
 .gps-record-step {
   position: relative;
   margin: 16px 0;
@@ -906,6 +934,7 @@ main.navigation-shell {
   margin: 9px 0 0;
 }
 .gps-fit-summary {
+  scroll-margin-top: 150px;
   padding: 12px;
   margin: 16px 0 10px;
   border: 1px solid #5f886e;

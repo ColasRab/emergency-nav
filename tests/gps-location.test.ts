@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildingSchema } from "../lib/buildings";
 import { parseGraph } from "../lib/graph";
 import { enuToLngLat, rotate, type Vec2 } from "../lib/geo/transform";
@@ -9,6 +9,9 @@ import {
   gpsModelHeadingOffset,
   gpsToModelPosition,
   matchGpsToModel,
+  recommendedCalibrationPair,
+  calibrationKey,
+  readLocationCalibration,
   type GpsLocationSample,
 } from "../lib/position/gpsCalibration";
 import { isRoomPointWalkable } from "../lib/navigation/roomStart";
@@ -35,9 +38,42 @@ function sample(
   return {
     point,
     gps: { latitude, longitude, accuracy: 0.3, timestamp: Date.now() },
+    quality: { readings: 5, discarded: 0, spreadM: 0, durationMs: 4000 },
   };
 }
 describe("two named GPS locations", () => {
+  it("recommends identifiable points across the floor instead of two nearby room doors", () => {
+    const pair = recommendedCalibrationPair(
+      points.filter((p) => p.floor === 1),
+    );
+    expect(pair).toHaveLength(2);
+    expect(pair.every((p) => p.floor === 1 && p.nodeId !== undefined)).toBe(
+      true,
+    );
+    expect(
+      Math.hypot(
+        pair[1].model[0] - pair[0].model[0],
+        pair[1].model[1] - pair[0].model[1],
+      ),
+    ).toBeGreaterThan(25);
+  });
+  it("does not mix a previous attempt's old first point with a new second capture", () => {
+    const a = sample(),
+      b = sample(left);
+    b.gps.timestamp += 11 * 60 * 1000;
+    expect(() => calibrateLocations(config, a, b)).toThrow(/too old/);
+  });
+  it("ignores older single-reading saved calibrations", () => {
+    const fit = calibrateLocations(config, sample(), sample(left));
+    const getItem = vi.fn(() => JSON.stringify({ ...fit, version: 1 }));
+    vi.stubGlobal("localStorage", { getItem });
+    try {
+      expect(calibrationKey(config)).toMatch(/:v2$/);
+      expect(readLocationCalibration(config)).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("uses the GPS distance ratio for spoken navigation distances", () => {
     const sampleGraph = {
       nodes: { 0: [0, 0, 1], 1: [0, 6, 1], 2: [0, 8, 1] },
