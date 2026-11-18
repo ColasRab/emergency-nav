@@ -10,6 +10,8 @@ import {
   gpsToModelPosition,
   matchGpsToModel,
   recommendedCalibrationPair,
+  roomCalibrationPair,
+  GpsBaselineError,
   calibrationKey,
   readLocationCalibration,
   type GpsLocationSample,
@@ -42,6 +44,22 @@ function sample(
   };
 }
 describe("two named GPS locations", () => {
+  it("offers Marsden's right and left model doors without requiring a long GPS baseline", () => {
+    expect(
+      roomCalibrationPair(points.filter((p) => p.floor === 1)).map((p) => p.id),
+    ).toEqual([right.id, left.id]);
+  });
+  it("starts the pair at the chosen door and never invents a second door from corridor nodes", () => {
+    expect(roomCalibrationPair(points, left.id).map((p) => p.id)).toEqual([
+      left.id,
+      right.id,
+    ]);
+    expect(
+      roomCalibrationPair([
+        { id: "hall", label: "Hall", floor: 1, model: [0, 0], nodeId: 42 },
+      ]),
+    ).toEqual([]);
+  });
   it("recommends identifiable points across the floor instead of two nearby room doors", () => {
     const pair = recommendedCalibrationPair(
       points.filter((p) => p.floor === 1),
@@ -147,6 +165,9 @@ describe("two named GPS locations", () => {
       b = sample(left);
     expect(() => calibrateLocations(config, a, { ...b, gps: a.gps })).toThrow(
       /nearly identical/,
+    );
+    expect(() => calibrateLocations(config, a, { ...b, gps: a.gps })).toThrow(
+      GpsBaselineError,
     );
     expect(() => calibrateLocations(config, a, a)).toThrow(/different second/);
     expect(() =>

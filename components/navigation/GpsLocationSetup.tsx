@@ -2,11 +2,14 @@
 import { useMemo, useRef, useEffect, useState } from "react";
 import type { BuildingConfig } from "@/lib/buildings";
 import type { NavGraph } from "@/lib/astar";
+import { lngLatToEnu } from "@/lib/geo/transform";
 import {
   buildingLocationPoints,
   calibrateLocations,
   assessGpsPosition,
   recommendedCalibrationPair,
+  roomCalibrationPair,
+  GpsBaselineError,
   type GpsLocationSample,
   type LocationCalibration,
 } from "@/lib/position/gpsCalibration";
@@ -15,6 +18,26 @@ import {
   GPS_CAPTURE_READINGS,
 } from "@/lib/position/gpsCapture";
 import LocationChooser from "./LocationChooser";
+
+function FacingDirection({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label>
+      Phone is pointing toward
+      <select value={value} onChange={(e) => onChange(Number(e.target.value))}>
+        <option value={180}>Front — corridor / room doors</option>
+        <option value={0}>Back — window wall</option>
+        <option value={90}>Right side of the map</option>
+        <option value={270}>Left side of the map</option>
+      </select>
+    </label>
+  );
+}
 
 function CaptureProgress({
   count,
@@ -44,6 +67,7 @@ export default function GpsLocationSetup({
   onApply,
   onClear,
   onUsePoint,
+  initialPointId,
 }: {
   config: BuildingConfig;
   graph: NavGraph;
@@ -52,23 +76,31 @@ export default function GpsLocationSetup({
   onApply: (calibration: LocationCalibration, facing: number) => void;
   onClear: () => void;
   onUsePoint: React.ComponentProps<typeof LocationChooser>["onChoose"];
+  initialPointId?: string;
 }) {
   const points = useMemo(
       () =>
         buildingLocationPoints(config, graph).filter((p) => p.floor === floor),
       [config, graph, floor],
     ),
-    recommended = useMemo(() => recommendedCalibrationPair(points), [points]);
+    recommended = useMemo(() => recommendedCalibrationPair(points), [points]),
+    roomPair = useMemo(
+      () => roomCalibrationPair(points, initialPointId),
+      [points, initialPointId],
+    ),
+    preferred = roomPair.length ? roomPair : recommended;
   const [mode, setMode] = useState<"gps" | "point">("gps"),
     [firstId, setFirstId] = useState(
-      points.find((p) => p.id === saved?.first.point.id)?.id ??
-        recommended[0]?.id ??
+      (initialPointId ? preferred[0]?.id : undefined) ??
+        points.find((p) => p.id === saved?.first.point.id)?.id ??
+        preferred[0]?.id ??
         points[0]?.id ??
         "",
     ),
     [secondId, setSecondId] = useState(
-      points.find((p) => p.id === saved?.second.point.id)?.id ??
-        recommended[1]?.id ??
+      (initialPointId ? preferred[1]?.id : undefined) ??
+        points.find((p) => p.id === saved?.second.point.id)?.id ??
+        preferred[1]?.id ??
         points[1]?.id ??
         "",
     ),
@@ -78,6 +110,7 @@ export default function GpsLocationSetup({
     [busy, setBusy] = useState<1 | 2 | null>(null),
     [collected, setCollected] = useState(0),
     [facing, setFacing] = useState(180),
+    [confirmedId, setConfirmedId] = useState(""),
     [error, setError] = useState(""),
     [now, setNow] = useState(Date.now());
   const alive = useRef(true),
@@ -103,9 +136,9 @@ export default function GpsLocationSetup({
         behavior: "smooth",
         block: "center",
       });
-    else if (candidate)
+    else if (candidate || second)
       summary.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [error, candidate]);
+  }, [error, candidate, second]);
   const guidanceQuality = candidate
     ? assessGpsPosition(candidate.second.gps, candidate)
     : null;
@@ -120,6 +153,40 @@ export default function GpsLocationSetup({
             firstPoint.model[1] - secondPoint.model[1],
           )
         : 0;
+  const modelFallback =
+      !!first &&
+      !!second &&
+      (!candidate ||
+        candidate.lowConfidence ||
+        !guidanceQuality?.usable ||
+        !fresh),
+    confirmedPoint =
+      [second?.point, first?.point].find((p) => p?.id === confirmedId) ??
+      second?.point,
+    sameRoomDoors =
+      !!first?.point.roomId &&
+      first.point.roomId === second?.point.roomId &&
+      first.point.nodeId !== undefined &&
+      second.point.nodeId !== undefined;
+  const recordedGpsDistance =
+    first && second
+      ? Math.hypot(
+          ...lngLatToEnu(
+            [second.gps.longitude, second.gps.latitude],
+            [first.gps.longitude, first.gps.latitude],
+          ),
+        )
+      : 0;
+  function useFartherPoints() {
+    if (recommended.length < 2) return;
+    setFirstId(recommended[0].id);
+    setSecondId(recommended[1].id);
+    setFirst(null);
+    setSecond(null);
+    setCandidate(null);
+    setConfirmedId("");
+    setError("");
+  }
   function changeMode(next: "gps" | "point") {
     capture.current?.abort();
     setMode(next);
@@ -138,6 +205,7 @@ export default function GpsLocationSetup({
     setCollected(0);
     setError("");
     setCandidate(null);
+    setConfirmedId("");
     if (step === 1) {
       setFirst(null);
       setSecond(null);
@@ -159,7 +227,13 @@ export default function GpsLocationSetup({
       }
     } catch (e) {
       if (alive.current && !controller.signal.aborted)
-        setError(e instanceof Error ? e.message : "GPS could not be recorded.");
+        setError(
+          e instanceof GpsBaselineError
+            ? ""
+            : e instanceof Error
+              ? e.message
+              : "GPS could not be recorded.",
+        );
     } finally {
       if (alive.current && capture.current === controller) setBusy(null);
     }
@@ -205,9 +279,9 @@ export default function GpsLocationSetup({
       ) : (
         <>
           <p>
-            Choose two identifiable points far apart on this floor. Stand still
-            at each point while at least five fresh GPS readings are collected.
-            Nearby room doors may be too close for GPS.
+            Choose the room’s left and right doors, then record each location
+            while standing still. If GPS cannot distinguish them, you can still
+            confirm your current door using its position in the model.
           </p>
           {saved && (
             <p className="status-line">
@@ -323,86 +397,126 @@ export default function GpsLocationSetup({
               {error}
             </p>
           )}
-          {candidate && (
+          {(candidate || modelFallback) && (
             <div ref={summary} className="gps-fit-summary" role="status">
               <strong>
-                {candidate.lowConfidence
-                  ? "GPS cannot distinguish these points"
-                  : guidanceQuality?.usable
-                    ? "Location calibration ready"
-                    : "Alignment recorded; GPS is too coarse for room guidance"}
+                {modelFallback
+                  ? sameRoomDoors
+                    ? "Door alignment ready from the model"
+                    : "Known-point alignment ready"
+                  : "Location calibration ready"}
               </strong>
-              <p>
-                Model separation {candidate.modelDistanceM.toFixed(2)} m · GPS
-                separation {candidate.gpsDistanceM.toFixed(2)} m
-              </p>
-              <p>
-                Ratio: {candidate.modelPerGpsMeter.toFixed(3)} model metres per
-                GPS metre. Navigation distances keep the estimated model scale.
-              </p>
-              {candidate.lowConfidence && (
-                <p className="status-warning">
-                  Low GPS confidence. With these readings, the GPS baseline
-                  needs to exceed{" "}
-                  {(
-                    3 *
-                    (candidate.first.gps.accuracy +
-                      candidate.second.gps.accuracy)
-                  ).toFixed(1)}{" "}
-                  m and the scale must be plausible. Use points farther apart,
-                  or align a known point below.
-                </p>
-              )}
-              {!fresh && (
-                <p className="status-warning">
-                  This capture is more than a minute old. Record the second
-                  point again before confirming your position.
-                </p>
-              )}
-              {!candidate.lowConfidence && !guidanceQuality?.usable && (
-                <p className="status-warning">
-                  You can save the alignment and confirm this point, but GPS
-                  cannot currently track you between rooms. Use Point and
-                  direction and confirm your progress as you walk.
-                </p>
-              )}
+              {modelFallback && first && second && confirmedPoint ? (
+                <>
+                  <p className="status-warning">
+                    {candidate && guidanceQuality?.usable && !fresh
+                      ? "The GPS capture has expired."
+                      : error
+                        ? "GPS alignment is unavailable for this attempt."
+                        : "Low GPS confidence for this pair."}{" "}
+                    Both locations were recorded, but these readings cannot
+                    support live room-level positioning. You can still use the
+                    known position from the model.
+                  </p>
+                  <p>
+                    Model separation {modelSeparation.toFixed(2)} m · recorded
+                    GPS separation {recordedGpsDistance.toFixed(2)} m.
+                  </p>
+                  <label>
+                    I am now standing at
+                    <select
+                      value={confirmedPoint.id}
+                      onChange={(e) => setConfirmedId(e.target.value)}
+                    >
+                      <option value={first.point.id}>
+                        {first.point.label}
+                      </option>
+                      <option value={second.point.id}>
+                        {second.point.label}
+                      </option>
+                    </select>
+                  </label>
+                  <FacingDirection value={facing} onChange={setFacing} />
+                  <button
+                    className="primary-sheet-action"
+                    onClick={() => onUsePoint(confirmedPoint, facing)}
+                  >
+                    {sameRoomDoors
+                      ? "Use this door position"
+                      : "Use this model point"}
+                  </button>
+                  <p>
+                    Stand at the selected location and aim the phone before
+                    confirming. GPS tracking stays off; confirm your next point
+                    as you walk.
+                  </p>
+                  <details>
+                    <summary>GPS recording details</summary>
+                    <p>
+                      First point: ±{first.gps.accuracy.toFixed(1)} m. Second
+                      point: ±{second.gps.accuracy.toFixed(1)} m. These are
+                      reported uncertainty estimates.
+                    </p>
+                    {candidate && (
+                      <p>
+                        Fitted ratio: {candidate.modelPerGpsMeter.toFixed(3)}{" "}
+                        model metres per GPS metre. This GPS fit is not applied.
+                      </p>
+                    )}
+                  </details>
+                  <button
+                    className="secondary-button"
+                    onClick={useFartherPoints}
+                  >
+                    Choose farther-apart GPS points
+                  </button>
+                </>
+              ) : candidate ? (
+                <>
+                  <p>
+                    Model separation {candidate.modelDistanceM.toFixed(2)} m ·
+                    GPS separation {candidate.gpsDistanceM.toFixed(2)} m
+                  </p>
+                  <p>
+                    Ratio: {candidate.modelPerGpsMeter.toFixed(3)} model metres
+                    per GPS metre. Navigation distances keep the estimated model
+                    scale.
+                  </p>
+                </>
+              ) : null}
             </div>
           )}
-          {candidate && !candidate.lowConfidence && (
-            <label>
-              Phone is pointing toward
-              <select
-                value={facing}
-                onChange={(e) => setFacing(Number(e.target.value))}
-              >
-                <option value={180}>Front — corridor / room doors</option>
-                <option value={0}>Back — window wall</option>
-                <option value={90}>Right side of the map</option>
-                <option value={270}>Left side of the map</option>
-              </select>
-            </label>
+          {candidate && !modelFallback && (
+            <FacingDirection value={facing} onChange={setFacing} />
           )}
-          <button
-            className="primary-sheet-action"
-            disabled={
-              !candidate || candidate.lowConfidence || !fresh || busy !== null
-            }
-            onClick={() => {
-              if (
-                candidate &&
-                !candidate.lowConfidence &&
-                Date.now() - candidate.second.gps.timestamp <= 60_000
-              )
-                onApply(candidate, facing);
-            }}
-          >
-            Use this calibration
-          </button>
-          <p className="status-line">
-            Remain at the second point and aim the phone in the chosen direction
-            before saving. GPS stays off until requested. Averaging does not
-            make indoor GPS exact.
-          </p>
+          {!modelFallback && (
+            <>
+              <button
+                className="primary-sheet-action"
+                disabled={
+                  !candidate ||
+                  candidate.lowConfidence ||
+                  !fresh ||
+                  busy !== null
+                }
+                onClick={() => {
+                  if (
+                    candidate &&
+                    !candidate.lowConfidence &&
+                    Date.now() - candidate.second.gps.timestamp <= 60_000
+                  )
+                    onApply(candidate, facing);
+                }}
+              >
+                Use this calibration
+              </button>
+              <p className="status-line">
+                Remain at the second point and aim the phone in the chosen
+                direction before saving. GPS stays off until requested.
+                Collecting more readings does not make indoor GPS exact.
+              </p>
+            </>
+          )}
           <button
             className="secondary-button"
             onClick={() => changeMode("point")}

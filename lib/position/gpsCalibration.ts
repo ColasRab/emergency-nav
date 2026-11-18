@@ -146,6 +146,46 @@ export function recommendedCalibrationPair(
   return best.sort((a, b) => a.model[0] - b.model[0]);
 }
 
+/** Use the current room's modeled doorways; GPS quality does not change their positions. */
+export function roomCalibrationPair(
+  points: LocationPoint[],
+  currentId?: string,
+): LocationPoint[] {
+  const currentRoom = points.find((p) => p.id === currentId)?.roomId,
+    rooms = [
+      ...new Set(
+        points
+          .filter((p) => p.roomId && p.nodeId !== undefined)
+          .map((p) => p.roomId!),
+      ),
+    ],
+    preferred =
+      currentRoom ??
+      points.find((p) => p.label === "Marsden · Right door")?.roomId,
+    roomId = [preferred, ...rooms].find(
+      (id) =>
+        id &&
+        points.filter((p) => p.roomId === id && p.nodeId !== undefined)
+          .length >= 2,
+    );
+  if (!roomId) return [];
+  const doors = points
+    .filter((p) => p.roomId === roomId && p.nodeId !== undefined)
+    .sort((a, b) => b.model[0] - a.model[0]);
+  if (doors.length < 2) return [];
+  const first = doors.find((p) => p.id === currentId) ?? doors[0];
+  return [first, first.id === doors[0].id ? doors.at(-1)! : doors[0]];
+}
+
+export class GpsBaselineError extends Error {
+  constructor() {
+    super(
+      "The GPS readings are nearly identical. Record again or use locations farther apart.",
+    );
+    this.name = "GpsBaselineError";
+  }
+}
+
 export function calibrateLocations(
   config: BuildingConfig,
   first: GpsLocationSample,
@@ -169,10 +209,7 @@ export function calibrateLocations(
     dx = second.point.model[0] - first.point.model[0],
     dz = second.point.model[1] - first.point.model[1],
     modelDistanceM = Math.hypot(dx, dz);
-  if (gpsDistanceM < 1)
-    throw new Error(
-      "The GPS readings are nearly identical. Record again or use locations farther apart.",
-    );
+  if (gpsDistanceM < 1) throw new GpsBaselineError();
   if (modelDistanceM < 0.5)
     throw new Error("Choose two locations farther apart in the model.");
   const modelPerGpsMeter = modelDistanceM / gpsDistanceM,

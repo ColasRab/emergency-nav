@@ -2,13 +2,13 @@
   {
     "buildingId": "admin",
     "loadStatus": "Loaded in 0.3 s · estimated room model",
-    "fps": 30.630383166331875,
+    "fps": 29.448806685271773,
     "environment": "Windows desktop Edge, headless software rendering; localhost; not a phone or 4G measurement"
   },
   {
     "buildingId": "ynares",
     "loadStatus": "Loaded in 0.3 s · estimated room model",
-    "fps": 30.13634472816523,
+    "fps": 32.39368735379894,
     "environment": "Windows desktop Edge, headless software rendering; localhost; not a phone or 4G measurement"
   }
 ]

@@ -236,10 +236,19 @@ test("identical GPS fixes do not create a bogus ratio and first-point reversal r
   await dialog
     .getByRole("button", { name: "Record GPS at second point", exact: true })
     .click();
-  await expect(dialog.getByRole("alert")).toContainText("nearly identical");
   await expect(
-    dialog.getByRole("button", { name: "Use this calibration", exact: true }),
-  ).toBeDisabled();
+    dialog.getByText("Door alignment ready from the model", { exact: true }),
+  ).toBeVisible();
+  await expect(dialog.getByRole("alert")).toHaveCount(0);
+  await dialog
+    .getByRole("button", { name: "Use this door position", exact: true })
+    .click();
+  await expect(page.getByTestId("estimated-place-region")).toHaveText(
+    "Left door",
+  );
+  await expect(
+    page.getByRole("button", { name: "Use GPS", exact: true }),
+  ).toBeVisible();
 });
 
 test("saved calibration starts a fresh attempt and saving realigns the current phone facing", async ({
@@ -393,12 +402,86 @@ test("poor GPS reports low confidence while permission denial leaves manual loca
     .boundingBox();
   expect(methods!.y).toBeGreaterThanOrEqual(close!.y + close!.height);
   await expect(
-    dialog.getByRole("button", { name: "Use this calibration", exact: true }),
-  ).toBeDisabled();
+    dialog.getByRole("button", { name: "Use this door position", exact: true }),
+  ).toBeEnabled();
   await page.screenshot({
     path: "reports/gps-calibration-points.png",
     fullPage: true,
   });
+  await dialog
+    .getByRole("button", {
+      name: "Choose farther-apart GPS points",
+      exact: true,
+    })
+    .click();
+  await expect(dialog.getByLabel("First location")).not.toHaveValue(
+    marsden.id + ":door:0",
+  );
+  await expect(
+    dialog.getByRole("button", {
+      name: "Record GPS at second point",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(0);
+});
+
+test("nearby GPS readings still allow confirmation of either modeled door", async ({
+  page,
+}) => {
+  await installGps(page, 7.4);
+  await ready(page);
+  await chooseDestination(page);
+  await page
+    .getByRole("button", { name: "Calibrate GPS", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "Calibrate by location",
+    exact: true,
+  });
+  await expect(dialog.getByLabel("First location")).toHaveValue(
+    marsden.id + ":door:0",
+  );
+  await expect(dialog.getByLabel("Second location")).toHaveValue(
+    marsden.id + ":door:1",
+  );
+  await dialog
+    .getByRole("button", { name: "Record GPS at first point", exact: true })
+    .click();
+  await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(1, {
+    timeout: 12000,
+  });
+  await moveGps(page, rightDoor[0] - 0.25, rightDoor[1], 7.4);
+  await dialog
+    .getByRole("button", { name: "Record GPS at second point", exact: true })
+    .click();
+  await expect(
+    dialog.getByText("Door alignment ready from the model", { exact: true }),
+  ).toBeVisible({ timeout: 12000 });
+  await expect(dialog.getByText(/Recorded.*GPS accuracy/)).toHaveCount(2);
+  await dialog
+    .getByLabel("I am now standing at")
+    .selectOption({ label: "Marsden · Right door" });
+  await dialog.getByLabel("Phone is pointing toward").selectOption("90");
+  await dialog
+    .getByRole("button", { name: "Use this door position", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId("estimated-place-region")).toHaveText(
+    "Right door",
+  );
+  await expect(
+    page.getByRole("button", { name: "Use GPS", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Start navigation", exact: true }),
+  ).toBeEnabled();
+  const storedGps = await page.evaluate(() =>
+    Object.keys(localStorage).filter(
+      (k) => k.startsWith("wayfinder:location-gps:") && k.endsWith(":v2"),
+    ),
+  );
+  expect(storedGps).toEqual([]);
 });
 
 test("phone window fits without scrolling and live-camera mode retains the location HUD", async ({

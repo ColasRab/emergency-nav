@@ -674,6 +674,7 @@ export default function NavigationApp() {
               saved={calibration}
               onApply={applyCalibration}
               onUsePoint={chooseLocation}
+              initialPointId={lastPointId}
               onClear={() => {
                 stopGps();
                 try {
